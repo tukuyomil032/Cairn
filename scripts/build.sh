@@ -5,14 +5,16 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
+source "$REPO_ROOT/scripts/lib.sh"
 
-command -v xcbeautify >/dev/null 2>&1 || {
-    echo "Error: xcbeautify not found. Run 'brew install xcbeautify'." >&2
-    exit 1
-}
+require_cmd xcbeautify "Run 'brew install xcbeautify'."
+
+log_step "Building Cairn ${C_DIM}(${*:-debug})${C_RESET}"
 
 if [[ "${CI:-}" == "true" ]]; then
     swift build "$@" | xcbeautify --is-ci --renderer github-actions --preserve-unbeautified
 else
     swift build "$@" | xcbeautify --preserve-unbeautified
 fi
+
+log_success "Build finished"
