@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	App Sandbox は意図的に付与しない。
+	Cairn は /Applications への書き込み・他アプリの ~/Library 配下の探索/削除・
+	hdiutil の Process 実行を行うため、Sandbox環境では実現不可能
+	（実装計画 セクション0 参照）。
+	-->
+</dict>
+</plist>
