@@ -2,6 +2,12 @@ name: Release
 
 # Manual trigger only — a release is cut when explicitly requested via
 # workflow_dispatch, never automatically on push or tag.
+#
+# NOTE: GitHub Actions' `paths` filter only applies to push/pull_request
+# events, not workflow_dispatch, so it can't be used to gate this workflow
+# on Swift file changes the way ci.yml/test.yml are. That's fine here since
+# every run is already an explicit, deliberate action rather than something
+# that fires on every commit.
 on:
   workflow_dispatch:
     inputs:

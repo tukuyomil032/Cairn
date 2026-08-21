@@ -3,7 +3,11 @@ name: CI
 on:
   push:
     branches: [main]
+    paths:
+      - "**/*.swift"
   pull_request:
+    paths:
+      - "**/*.swift"
 
 jobs:
   lint-and-build:
@@ -11,8 +15,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install lint tools
-        run: brew install swiftlint swift-format
+      - name: Install tools
+        run: brew install swiftlint swift-format xcbeautify
 
       - name: swift-format lint
         run: swift-format lint --recursive Sources Tests
@@ -21,4 +25,4 @@ jobs:
         run: swiftlint lint
 
       - name: Build
-        run: swift build
+        run: bash scripts/build.sh

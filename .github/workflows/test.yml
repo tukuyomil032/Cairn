@@ -3,7 +3,11 @@ name: Test
 on:
   push:
     branches: [main]
+    paths:
+      - "**/*.swift"
   pull_request:
+    paths:
+      - "**/*.swift"
 
 jobs:
   test:
@@ -11,5 +15,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install tools
+        run: brew install xcbeautify
+
       - name: Run tests
-        run: swift test
+        run: bash scripts/test.sh
