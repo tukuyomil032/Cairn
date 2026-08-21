@@ -16,7 +16,9 @@ let package = Package(
         .package(url: "https://github.com/sindresorhus/Defaults", from: "9.0.0"),
         // ライセンス未確認（LICENSEファイルなし、GitHub API上でも licenseInfo が空）。
         // 実装着手前に作者(zats)へ確認すること。docs/dependencies.md 参照。
-        .package(url: "https://github.com/zats/permiso", branch: "main")
+        // タグ付きリリースが無いため、branch指定ではなく特定コミットへ固定
+        // （mainブランチの書き換えで意図しないコードが取り込まれるsupply-chainリスクを避けるため）。
+        .package(url: "https://github.com/zats/permiso", revision: "77afe0eb5251d6da8756aac1b24e3c01c1433f87")
     ],
     targets: [
         .executableTarget(
