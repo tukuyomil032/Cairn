@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint-and-build:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install lint tools
+        run: brew install swiftlint swift-format
+
+      - name: swift-format lint
+        run: swift-format lint --recursive Sources Tests
+
+      - name: swiftlint
+        run: swiftlint lint
+
+      - name: Build
+        run: swift build

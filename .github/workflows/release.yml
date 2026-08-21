@@ -1,0 +1,49 @@
+name: Release
+
+# Manual trigger only — a release is cut when explicitly requested via
+# workflow_dispatch, never automatically on push or tag.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (e.g. 0.1.0). Defaults to version.env if omitted."
+        required: false
+
+jobs:
+  release:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: resolve_version
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          if [ -n "$INPUT_VERSION" ]; then
+            VERSION="$INPUT_VERSION"
+          else
+            # shellcheck source=/dev/null
+            source version.env
+            VERSION="$MARKETING_VERSION"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build (release configuration)
+        run: swift build -c release
+
+      # NOTE: scripts/build-dmg.sh does not exist yet (added in a later phase
+      # alongside the .app bundle assembly script). This step is a placeholder
+      # until packaging is implemented.
+      - name: Package dmg
+        run: |
+          brew install create-dmg
+          bash scripts/build-dmg.sh "${{ steps.resolve_version.outputs.version }}" .build/release/Cairn.app build/dist
+
+      - name: Create GitHub Release (prerelease)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.resolve_version.outputs.version }}
+          name: v${{ steps.resolve_version.outputs.version }}
+          prerelease: true
+          files: build/dist/*.dmg
