@@ -1,0 +1,109 @@
+import Foundation
+
+/// GitHub REST APIクライアント。search/releases/readme/userの4エンドポイントを提供する。
+///
+/// この時点では認証ヘッダーの付与は行わない（未認証でもブラウズ操作が成立する設計。
+/// `docs/`外の実装計画セクション2参照）。`accessTokenProvider`は後続タスクで
+/// `AuthenticationState`から現在のアクセストークンを取得するために配線する。
+final class GitHubClient: GitHubClientProtocol {
+    private let baseURL: URL
+    private let session: URLSession
+    private let rateLimiter: GitHubRateLimiter
+    private let decoder: JSONDecoder
+    private let accessTokenProvider: @Sendable () async -> String?
+
+    init(
+        baseURL: URL = URL(string: "https://api.github.com")!,
+        session: URLSession = .shared,
+        rateLimiter: GitHubRateLimiter = GitHubRateLimiter(),
+        accessTokenProvider: @escaping @Sendable () async -> String? = { nil }
+    ) {
+        self.baseURL = baseURL
+        self.session = session
+        self.rateLimiter = rateLimiter
+        self.accessTokenProvider = accessTokenProvider
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        self.decoder = decoder
+    }
+
+    func searchRepositories(query: String, page: Int) async throws -> SearchRepositoriesResult {
+        var components = URLComponents(
+            url: baseURL.appendingPathComponent("search/repositories"), resolvingAgainstBaseURL: false)!
+        components.queryItems = [
+            URLQueryItem(name: "q", value: query),
+            URLQueryItem(name: "page", value: String(page)),
+        ]
+        return try await get(components.url!)
+    }
+
+    func releases(owner: String, repo: String) async throws -> [Release] {
+        let url = baseURL.appendingPathComponent("repos/\(owner)/\(repo)/releases")
+        return try await get(url)
+    }
+
+    func readme(owner: String, repo: String) async throws -> String? {
+        let url = baseURL.appendingPathComponent("repos/\(owner)/\(repo)/readme")
+        do {
+            let content: ReadmeContent = try await get(url)
+            guard content.encoding == "base64",
+                let data = Data(base64Encoded: content.content.replacingOccurrences(of: "\n", with: "")),
+                let text = String(data: data, encoding: .utf8)
+            else {
+                return nil
+            }
+            return text
+        } catch GitHubClientError.httpError(statusCode: 404) {
+            return nil
+        }
+    }
+
+    func authenticatedUser() async throws -> GitHubUser {
+        guard await accessTokenProvider() != nil else {
+            throw GitHubClientError.unauthenticated
+        }
+        let url = baseURL.appendingPathComponent("user")
+        return try await get(url)
+    }
+
+    private func get<T: Decodable>(_ url: URL) async throws -> T {
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        if let token = await accessTokenProvider() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        try await rateLimiter.waitIfNeeded()
+
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw GitHubClientError.decodingFailed
+        }
+        await rateLimiter.update(from: httpResponse)
+
+        switch httpResponse.statusCode {
+        case 200..<300:
+            break
+        case 401:
+            throw GitHubClientError.tokenInvalid
+        case 403, 429:
+            await rateLimiter.recordRateLimited(response: httpResponse)
+            throw GitHubClientError.rateLimited
+        default:
+            throw GitHubClientError.httpError(statusCode: httpResponse.statusCode)
+        }
+
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            throw GitHubClientError.decodingFailed
+        }
+    }
+}
+
+private struct ReadmeContent: Decodable {
+    let content: String
+    let encoding: String
+}
