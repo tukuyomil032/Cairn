@@ -40,9 +40,22 @@
 
 **既知の未実施事項**: `just run`での実機サインインフロー確認（ユーザー環境でのみ実施可能）。
 
-## Phase 2〜11 — 未着手
+## Phase 2: 永続化層（SwiftData） — 完了
 
-永続化層 / ノイズ除去・分類ロジック / 検索アーキテクチャ / Discovery UI / AppDetail UI / インストール機能 / アンインストール機能 / Sparkle統合 / 配布パッケージング / オンボーディング / 仕上げ。詳細は実装計画ファイル参照。
+- [x] `CachedRepository`/`CachedRelease`/`InstalledApp` の `@Model` 定義（`Cache/`配下）
+  - `category`はPhase3の`Category` enumへの依存を避け、Phase2では`String`のまま保持
+  - `CachedRelease`に`repository`逆参照を追加（元プランのスニペットにはないが、`deleteRule: .cascade`を機能させるために必須）
+- [x] `CairnEnvironment`実装（`ModelContainer`保持の軽量環境容器、on-disk/in-memory切り替え、初期化失敗時は`fatalError`）
+- [x] `CairnApp.swift`への`.modelContainer(_:)`配線（`just run`で実機起動・永続化ストア生成を確認済み）
+- [x] SwiftTestingによるCRUD/cascade削除/unique制約のテスト
+
+**実装時に判明した挙動**: SwiftDataの`@Attribute(.unique)`制約は違反時に例外を投げず、既存レコードを上書き（upsert）する。テストはこの実挙動に合わせて期待値を確定した。また、in-memory `ModelContainer`を返す際は`CairnEnvironment`インスタンス自体を保持し続ける必要がある（`ModelContext`だけを返す一時関数だとコンテナが解放されテストプロセスがクラッシュする）。
+
+**今回のスコープ外（次フェーズへ）**: `GitHubClient`/`AuthenticationState`を含む本格的な`AppEnvironment`へのDI配線は、引き続き「UI機能フェーズ」で行う。
+
+## Phase 3〜11 — 未着手
+
+ノイズ除去・分類ロジック / 検索アーキテクチャ / Discovery UI / AppDetail UI / インストール機能 / アンインストール機能 / Sparkle統合 / 配布パッケージング / オンボーディング / 仕上げ。詳細は実装計画ファイル参照。
 
 ## 既知の未解決事項
 
