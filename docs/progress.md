@@ -24,19 +24,21 @@
 - [x] `docs/dependencies.md`から個人の参考プロジェクト名を一般化した表現に匿名化
 - [x] `permiso`依存を`branch: "main"`から特定コミットへの`revision:`固定に変更（supply-chain対応）
 
-## Phase 1: GitHub APIクライアント層 + 認証 — 未着手
+## Phase 1: GitHub APIクライアント層 + 認証 — 完了
 
-**事前準備（ユーザー作業、未実施）**: GitHub OAuth App作成（Device Flow有効化、Client ID取得）。
+**事前準備（ユーザー作業、実施済み）**: GitHub App「Cairn Auth Connecter」作成（Device Flow有効化、Contents/Metadata読み取り権限、Expire user authorization tokens有効）。Client IDは`GitHubOAuthConfig.swift`に埋め込み。当初はclassic OAuth Appを想定していたが、`Ov23li`プレフィックスのClient IDはトークンが失効しない（refresh_token非対応）ことが判明したため、GitHub Appへ切り替えた。GitHub Appのuser-to-serverトークンが未インストールの公開リポジトリ（`torvalds/linux`等）にも問題なくアクセスできることをcurlで実機検証済み。
 
-- [ ] `GitHubModels`定義
-- [ ] `GitHubRateLimiter`実装
-- [ ] `GitHubClient`基本実装（search/releases/readme/user）
-- [ ] `DeviceFlowAuthenticator`実装
-- [ ] `KeychainTokenStore`実装
-- [ ] `AuthenticationState`実装
-- [ ] refresh token自動更新ロジック
-- [ ] `GitHubClient`への認証統合
-- [ ] `DeviceFlowSignInView`実装
+- [x] `GitHubModels`定義（`Models/Repository.swift`, `Release.swift`, `GitHubUser.swift`）
+- [x] `GitHubRateLimiter`実装
+- [x] `GitHubClient`基本実装（search/releases/readme/user）
+- [x] `DeviceFlowAuthenticator`実装
+- [x] `KeychainTokenStore`実装
+- [x] `AuthenticationState`実装（`@MainActor`）
+- [x] refresh token自動更新ロジック（`AuthenticationState.validAccessToken()`）
+- [x] `GitHubClient`への認証統合（`onUnauthorized`フック。実際のDI配線はUI機能フェーズで）
+- [x] `DeviceFlowSignInView`実装（自動テストなし、実機確認が必要）
+
+**既知の未実施事項**: `just run`での実機サインインフロー確認（ユーザー環境でのみ実施可能）。
 
 ## Phase 2〜11 — 未着手
 
