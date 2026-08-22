@@ -145,6 +145,23 @@ struct GitHubClientTests {
         }
     }
 
+    @Test("401を受けるとonUnauthorizedフックが呼ばれる（AuthenticationStateの.tokenInvalid遷移をトリガーする配線点）")
+    func callsOnUnauthorizedHookOn401() async throws {
+        StubURLProtocol.reset()
+        StubURLProtocol.stub(path: "/user", statusCode: 401, body: Data())
+        let recorder = UnauthorizedCallRecorder()
+        let client = GitHubClient(
+            baseURL: URL(string: "https://api.github.com")!,
+            session: Self.makeSession(),
+            accessTokenProvider: { "expired-token" },
+            onUnauthorized: { await recorder.markCalled() }
+        )
+
+        _ = try? await client.authenticatedUser()
+
+        #expect(await recorder.wasCalled)
+    }
+
     @Test("403を受けるとrateLimitedを投げる")
     func throwsRateLimitedOn403() async throws {
         StubURLProtocol.reset()
@@ -155,5 +172,14 @@ struct GitHubClientTests {
         await #expect(throws: GitHubClientError.rateLimited) {
             try await client.searchRepositories(query: "language:Swift", page: 1)
         }
+    }
+}
+
+/// `onUnauthorized`フックが呼ばれたかどうかを記録するテスト用ヘルパー。
+private actor UnauthorizedCallRecorder {
+    private(set) var wasCalled = false
+
+    func markCalled() {
+        wasCalled = true
     }
 }
