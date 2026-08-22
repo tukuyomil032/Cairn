@@ -35,7 +35,10 @@ struct DeviceFlowSignInView: View {
                     .multilineTextAlignment(.center)
             }
         }
-        .padding()
+        .padding(32)
+        .frame(minWidth: 320)
+        .glassEffect(.regular, in: .rect(cornerRadius: 24))
+        .padding(24)
         .onChange(of: authState.status) { _, newStatus in
             if case .authenticating(let userCode, let verificationURI) = newStatus {
                 NSWorkspace.shared.open(verificationURI)
@@ -68,6 +71,9 @@ struct DeviceFlowSignInView: View {
             Text(userCode)
                 .font(.system(.title, design: .monospaced))
                 .textSelection(.enabled)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .glassEffect(.regular.interactive(), in: .capsule)
             Button("ブラウザを再度開く") {
                 NSWorkspace.shared.open(verificationURI)
             }
