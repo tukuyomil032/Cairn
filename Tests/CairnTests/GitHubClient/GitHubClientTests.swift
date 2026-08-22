@@ -3,67 +3,6 @@ import Testing
 
 @testable import Cairn
 
-/// `URLSession`をネットワークに触れずスタブ化するための`URLProtocol`。
-/// パスごとにレスポンスを登録し、`GitHubClient`が組み立てたリクエストをそのまま検証できるようにする。
-final class StubURLProtocol: URLProtocol {
-    struct Stub: Sendable {
-        let statusCode: Int
-        let headers: [String: String]
-        let body: Data
-    }
-
-    private static let lock = NSLock()
-    nonisolated(unsafe) private static var stubs: [String: Stub] = [:]
-    nonisolated(unsafe) private static var recordedRequests: [URLRequest] = []
-
-    static func reset() {
-        lock.lock()
-        defer { lock.unlock() }
-        stubs = [:]
-        recordedRequests = []
-    }
-
-    static func stub(path: String, statusCode: Int = 200, headers: [String: String] = [:], body: Data) {
-        lock.lock()
-        defer { lock.unlock() }
-        stubs[path] = Stub(statusCode: statusCode, headers: headers, body: body)
-    }
-
-    static func recordedRequests(matching path: String) -> [URLRequest] {
-        lock.lock()
-        defer { lock.unlock() }
-        return recordedRequests.filter { $0.url?.path == path }
-    }
-
-    override class func canInit(with request: URLRequest) -> Bool { true }
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
-
-    override func startLoading() {
-        let path = request.url?.path ?? ""
-        Self.lock.lock()
-        Self.recordedRequests.append(request)
-        let stub = Self.stubs[path]
-        Self.lock.unlock()
-
-        guard let stub else {
-            client?.urlProtocol(self, didFailWithError: URLError(.fileDoesNotExist))
-            return
-        }
-
-        let response = HTTPURLResponse(
-            url: request.url!,
-            statusCode: stub.statusCode,
-            httpVersion: "HTTP/1.1",
-            headerFields: stub.headers
-        )!
-        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        client?.urlProtocol(self, didLoad: stub.body)
-        client?.urlProtocolDidFinishLoading(self)
-    }
-
-    override func stopLoading() {}
-}
-
 // StubURLProtocolがプロセス全体で共有されるため、テスト同士の並列実行による
 // スタブの取り合いを避けるためシリアル実行にする。
 @Suite("GitHubClientのエンドポイント呼び出し", .serialized)
