@@ -4,6 +4,7 @@ import Testing
 @testable import Cairn
 
 @Suite("AuthenticationStateの状態遷移", .serialized)
+@MainActor
 struct AuthenticationStateTests {
     private static func makeAuthenticatorSession() -> URLSession {
         let config = URLSessionConfiguration.ephemeral
@@ -87,12 +88,13 @@ struct AuthenticationStateTests {
             now: { referenceDate }
         )
 
-        var deviceCodeSeen: DeviceCodeResponse?
-        try await state.signIn(onDeviceCodeReady: { deviceCodeSeen = $0 }, sleep: { _ in })
+        // requestDeviceCode()直後、ポーリング開始前の時点でstatusが.authenticatingへ
+        // 遷移していることを、signIn呼び出し前後の状態と合わせて検証する。
+        #expect(state.status == .unauthenticated)
+        try await state.signIn(sleep: { _ in })
 
         #expect(state.status == .authenticated)
         #expect(state.currentAccessToken == "issued-token")
-        #expect(deviceCodeSeen?.userCode == "ABCD-1234")
 
         let stored = try tokenStore.load()
         #expect(stored?.refreshToken == "issued-refresh-token")

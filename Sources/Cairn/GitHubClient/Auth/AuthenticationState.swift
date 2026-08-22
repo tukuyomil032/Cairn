@@ -14,7 +14,12 @@ enum AuthenticationStatus: Equatable, Sendable {
 
 /// アプリ全体のGitHub認証状態を管理する。起動時にKeychainからトークンを復元し、
 /// Device Flowによるサインイン、401受信時の`.tokenInvalid`遷移、サインアウトを扱う。
+///
+/// SwiftUIビューから直接バインドされるUI状態であるため`@MainActor`に隔離する
+/// （`GitHubClient`からは`accessTokenProvider`/`onUnauthorized`クロージャ越しに
+/// `await`で呼ばれる想定）。
 @Observable
+@MainActor
 final class AuthenticationState {
     private(set) var status: AuthenticationStatus
 
@@ -34,15 +39,16 @@ final class AuthenticationState {
     }
 
     /// Device Flowを開始し、成功するまで（またはエラーが起きるまで）実行し続ける。
-    /// `onDeviceCodeReady`はuser_code表示直後（ブラウザ起動・クリップボードコピー等をUI側で行うため）に呼ばれる。
+    /// user_codeが用意でき次第`status`が`.authenticating`へ遷移するので、ブラウザ起動・
+    /// クリップボードコピー等のUI側副作用はその状態変化を監視して行う
+    /// （`DeviceFlowSignInView`参照。クロージャで直接渡さないのは、Swift 6の厳格な並行性チェック下で
+    /// MainActor隔離のUIクロージャを非隔離のasyncメソッドへ渡すのを避けるため）。
     /// `sleep`はテスト時にポーリング間隔の実待機をスキップするための注入ポイント。
     func signIn(
-        onDeviceCodeReady: (DeviceCodeResponse) -> Void = { _ in },
         sleep: @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
     ) async throws {
         let deviceCode = try await authenticator.requestDeviceCode()
         status = .authenticating(userCode: deviceCode.userCode, verificationURI: deviceCode.verificationURI)
-        onDeviceCodeReady(deviceCode)
 
         do {
             let token = try await authenticator.pollForAccessToken(
