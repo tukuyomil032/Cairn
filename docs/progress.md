@@ -53,22 +53,28 @@
 
 **今回のスコープ外（次フェーズへ）**: `GitHubClient`/`AuthenticationState`を含む本格的な`AppEnvironment`へのDI配線は、引き続き「UI機能フェーズ」で行う。
 
-## Phase 3: ノイズ除去 + 分類ロジック — 未着手
+## Phase 3: ノイズ除去 + 分類ロジック — 完了
 
 **判断背景**: ノイズ除去条件は当初「star数の閾値でフィルタ」する案も検討したが、「知る人ぞ知る新規の良質アプリを取りこぼしてしまい、Cairnの『発見重視』というコアバリューと相性が悪い」という理由で不採用にした。代わりに「リポジトリのtopicsタグに`macos`/`macos-app`等が含まれる」と「GitHub Releasesに`.dmg`または`.zip`資産が存在する」の2条件ANDのみを採用する。
 
 ジャンル分類は「固定カテゴリ + キーワードマッピングのハイブリッド」方式。キーワード辞書をSwiftコード内のenumではなく`Resources/CategoryKeywords.json`として外部化するのは、「今後手動でメンテしていく前提」という要件に合わせ、リビルドなしで調整できるようにするため。スコアで一件もマッチしない場合は「その他」に分類しつつ、元のtopicsを常にサブタグとして併記する（両方採用）。これはユーザーに確認したわけではなく、実装計画側の判断——「その他」だけで大量の未分類アプリが並ぶと発見体験が悪化するため、サブタグでの絞り込み・検索を可能にする、という設計意図。
 
-- [ ] `NoiseFilter`実装（`requiredTopicsAny`と`validAssetExtensions`のAND条件判定。`.pkg`のみの資産は今回スコープ外、コード上にコメントで将来拡張ポイントを残す）
-- [ ] `Category` enum定義（developerTools, productivity, mediaCreation, music, photography, utilities, system, games, communication, education, other）
-- [ ] `Resources/CategoryKeywords.json`初期辞書作成
-- [ ] `CategoryClassifier`実装（スコアリング: topics完全一致3点 > リポジトリ名部分一致2点 > README冒頭一致1点。最高スコアのカテゴリを採用、全スコア0なら`.other`+元topicsをサブタグ併記）
+- [x] `NoiseFilter`実装（`requiredTopicsAny`と`validAssetExtensions`のAND条件判定。`.pkg`のみの資産は今回スコープ外、コード上にコメントで将来拡張ポイントを残す）
+- [x] `Category` enum定義（developerTools, productivity, mediaCreation, music, photography, utilities, system, games, communication, education, other）
+- [x] `Resources/CategoryKeywords.json`初期辞書作成
+- [x] `CategoryClassifier`実装（スコアリング: topics完全一致3点 > リポジトリ名部分一致2点 > README冒頭一致1点。最高スコアのカテゴリを採用、全スコア0なら`.other`+元topicsをサブタグ併記）
 
 **該当するデザインパターン**: Strategy（`NoiseFilter`/`CategoryClassifier`を判定ロジックとして差し替え可能にする）
 
 **テスト方針**:
 - `NoiseFilterTests`: topics有無×asset有無の4象限を検証
 - `CategoryClassifierTests`: topics/名前/README一致の優先順位、フォールバック"other"+サブタグ併記を検証
+
+**実装時に確定した設計判断（要件に数値・範囲の明記がなかった点）**:
+- `subTags`は`.other`に限定せず、全カテゴリで一律`repository.topics`を併記する（分類済みアプリでもtopicsベースの絞り込み・検索を可能にするため。ユーザー確認済み）
+- README「冒頭」の範囲は先頭500文字と定義（タイトル+概要段落程度をカバーしつつ詳細セクションには踏み込まない目安。ユーザー確認済み）
+- スコア同点時のタイブレークは`Category.allCases`の宣言順で最初に最高得点になったカテゴリを採用する決定的ルールとした（`Dictionary`のキー順は不定なため必須の設計）
+- Strategyパターンのプロトコル命名は動名詞スタイル（`NoiseFiltering`/`CategoryClassifying`）を採用（ユーザー確認済み。既存コードには名詞+Protocol派もあるため今後混在に注意）
 
 ## Phase 4: 検索アーキテクチャ — 未着手
 

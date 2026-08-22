@@ -1,0 +1,12 @@
+{
+  "developerTools": ["cli", "compiler", "sdk", "devtools", "ide", "linter", "build-tool", "xcode"],
+  "productivity": ["todo", "task-manager", "note-taking", "calendar", "productivity", "notes"],
+  "mediaCreation": ["video-editor", "design-tool", "3d", "animation", "illustration", "vector"],
+  "music": ["music", "audio", "daw", "midi", "synth", "audio-player"],
+  "photography": ["photo", "photography", "raw", "image-editor", "camera"],
+  "utilities": ["utility", "menu-bar", "toolbox", "system-utility"],
+  "system": ["window-manager", "dotfiles", "shell", "terminal", "launcher"],
+  "games": ["game", "puzzle-game", "arcade", "gaming"],
+  "communication": ["chat", "messaging", "email-client", "irc", "messenger"],
+  "education": ["education", "learning", "flashcards", "language-learning", "study"]
+}
