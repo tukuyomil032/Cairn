@@ -91,16 +91,44 @@ struct DeviceFlowAuthenticator: Sendable {
         throw AuthenticationError.expiredToken
     }
 
+    /// 失効したアクセストークンを`refresh_token`で更新する。GitHub Appのuser-to-serverトークンは
+    /// 8時間で失効するため（`docs/`外の実装計画セクション2参照）、`AuthenticationState`が
+    /// 有効期限切れを検知した際に呼ぶ。
+    func refreshAccessToken(refreshToken: String) async throws -> AccessTokenResponse {
+        let poll = try await postToTokenEndpoint([
+            "client_id": clientID,
+            "refresh_token": refreshToken,
+            "grant_type": "refresh_token",
+        ])
+        guard poll.error == nil else {
+            throw AuthenticationError.unexpectedResponse(errorCode: poll.error!)
+        }
+        guard let accessToken = poll.accessToken, let tokenType = poll.tokenType, let scope = poll.scope else {
+            throw AuthenticationError.decodingFailed
+        }
+        return AccessTokenResponse(
+            accessToken: accessToken,
+            expiresIn: poll.expiresIn,
+            refreshToken: poll.refreshToken,
+            refreshTokenExpiresIn: poll.refreshTokenExpiresIn,
+            tokenType: tokenType,
+            scope: scope
+        )
+    }
+
     private func pollOnce(deviceCode: String) async throws -> TokenPollResponse {
+        try await postToTokenEndpoint([
+            "client_id": clientID,
+            "device_code": deviceCode,
+            "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+        ])
+    }
+
+    private func postToTokenEndpoint(_ body: [String: String]) async throws -> TokenPollResponse {
         var request = URLRequest(url: baseURL.appendingPathComponent("login/oauth/access_token"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-        let body = [
-            "client_id": clientID,
-            "device_code": deviceCode,
-            "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
-        ]
         request.httpBody = Data(body.map { "\($0.key)=\($0.value)" }.joined(separator: "&").utf8)
 
         let data: Data

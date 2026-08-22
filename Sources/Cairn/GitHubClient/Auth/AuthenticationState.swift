@@ -59,9 +59,38 @@ final class AuthenticationState {
         }
     }
 
-    /// 現在のアクセストークン。未認証・失効時は`nil`。`GitHubClient`の`accessTokenProvider`に配線する。
+    /// 現在のアクセストークン。未認証・失効時は`nil`。有効期限のチェックや自動更新は行わない
+    /// 同期アクセサ（UI表示用）。`GitHubClient`からの実際のリクエストには`validAccessToken()`を使う。
     var currentAccessToken: String? {
         (try? tokenStore.load())?.accessToken
+    }
+
+    /// 有効なアクセストークンを返す。保存済みトークンが期限切れの場合はrefresh_tokenで自動更新を試み、
+    /// 更新後のトークンを返す。未認証・refresh失敗・refresh_token自体の失効時は`nil`を返し、
+    /// 後者2つの場合は`.tokenInvalid`へ遷移させて再認証を促す。`GitHubClient`の`accessTokenProvider`に配線する。
+    func validAccessToken() async -> String? {
+        guard let stored = try? tokenStore.load() else { return nil }
+
+        guard let accessTokenExpiresAt = stored.accessTokenExpiresAt, accessTokenExpiresAt <= now() else {
+            return stored.accessToken
+        }
+
+        guard let refreshToken = stored.refreshToken,
+            stored.refreshTokenExpiresAt.map({ $0 > now() }) ?? true
+        else {
+            status = .tokenInvalid
+            return nil
+        }
+
+        do {
+            let refreshed = try await authenticator.refreshAccessToken(refreshToken: refreshToken)
+            try persist(refreshed)
+            status = .authenticated
+            return refreshed.accessToken
+        } catch {
+            status = .tokenInvalid
+            return nil
+        }
     }
 
     /// `GitHubClient`が401を受けた際に呼び、再認証を促す状態へ遷移させる。

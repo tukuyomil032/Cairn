@@ -184,4 +184,34 @@ struct DeviceFlowAuthenticatorTests {
             )
         }
     }
+
+    @Test("refreshAccessTokenが成功すると新しいトークンを返す")
+    func refreshAccessTokenReturnsNewToken() async throws {
+        DeviceFlowStubURLProtocol.reset()
+        DeviceFlowStubURLProtocol.stub(
+            path: "/login/oauth/access_token",
+            body: Self.pollBody(accessToken: "refreshed-token")
+        )
+
+        let authenticator = Self.makeAuthenticator()
+        let token = try await authenticator.refreshAccessToken(refreshToken: "old-refresh-token")
+
+        #expect(token.accessToken == "refreshed-token")
+        #expect(token.refreshToken == "refresh-token")
+    }
+
+    @Test("refreshAccessTokenがエラーレスポンスを受けるとunexpectedResponseを投げる")
+    func refreshAccessTokenThrowsOnErrorResponse() async throws {
+        DeviceFlowStubURLProtocol.reset()
+        DeviceFlowStubURLProtocol.stub(
+            path: "/login/oauth/access_token",
+            body: Self.pollBody(error: "bad_refresh_token")
+        )
+
+        let authenticator = Self.makeAuthenticator()
+
+        await #expect(throws: AuthenticationError.unexpectedResponse(errorCode: "bad_refresh_token")) {
+            try await authenticator.refreshAccessToken(refreshToken: "old-refresh-token")
+        }
+    }
 }

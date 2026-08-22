@@ -160,4 +160,129 @@ struct AuthenticationStateTests {
         #expect(state.status == .unauthenticated)
         #expect(try tokenStore.load() == nil)
     }
+
+    @Test("アクセストークンが未失効ならvalidAccessTokenはリフレッシュせずそのまま返す")
+    func validAccessTokenReturnsStoredTokenWhenNotExpired() async throws {
+        AuthenticationStateStubURLProtocol.reset()
+        let keychain = InMemoryKeychain()
+        let tokenStore = KeychainTokenStore(keychain: keychain, service: "svc", account: "acct")
+        let referenceDate = Date(timeIntervalSince1970: 1_700_000_000)
+        try tokenStore.save(
+            StoredToken(
+                accessToken: "still-valid",
+                accessTokenExpiresAt: referenceDate.addingTimeInterval(3600),
+                refreshToken: "refresh-token",
+                refreshTokenExpiresAt: nil
+            )
+        )
+        let state = AuthenticationState(
+            tokenStore: tokenStore,
+            authenticator: Self.makeAuthenticator(),
+            now: { referenceDate }
+        )
+
+        let token = try #require(await state.validAccessToken())
+
+        #expect(token == "still-valid")
+        #expect(AuthenticationStateStubURLProtocol.recordedRequests(matching: "/login/oauth/access_token").isEmpty)
+    }
+
+    @Test("アクセストークンが失効していればrefresh_tokenで自動更新しKeychainへ保存する")
+    func validAccessTokenRefreshesExpiredToken() async throws {
+        AuthenticationStateStubURLProtocol.reset()
+        AuthenticationStateStubURLProtocol.stub(
+            path: "/login/oauth/access_token",
+            body: Data(
+                """
+                {
+                    "access_token": "refreshed-token",
+                    "expires_in": 28800,
+                    "refresh_token": "new-refresh-token",
+                    "refresh_token_expires_in": 15897600,
+                    "token_type": "bearer",
+                    "scope": ""
+                }
+                """.utf8
+            )
+        )
+        let keychain = InMemoryKeychain()
+        let tokenStore = KeychainTokenStore(keychain: keychain, service: "svc", account: "acct")
+        let referenceDate = Date(timeIntervalSince1970: 1_700_000_000)
+        try tokenStore.save(
+            StoredToken(
+                accessToken: "expired",
+                accessTokenExpiresAt: referenceDate.addingTimeInterval(-1),
+                refreshToken: "old-refresh-token",
+                refreshTokenExpiresAt: referenceDate.addingTimeInterval(3600)
+            )
+        )
+        let state = AuthenticationState(
+            tokenStore: tokenStore,
+            authenticator: Self.makeAuthenticator(),
+            now: { referenceDate }
+        )
+
+        let token = try #require(await state.validAccessToken())
+
+        #expect(token == "refreshed-token")
+        #expect(state.status == .authenticated)
+        #expect(try tokenStore.load()?.refreshToken == "new-refresh-token")
+    }
+
+    @Test("refresh_token自体も失効していればtokenInvalidへ遷移しnilを返す")
+    func validAccessTokenReturnsNilWhenRefreshTokenAlsoExpired() async throws {
+        AuthenticationStateStubURLProtocol.reset()
+        let keychain = InMemoryKeychain()
+        let tokenStore = KeychainTokenStore(keychain: keychain, service: "svc", account: "acct")
+        let referenceDate = Date(timeIntervalSince1970: 1_700_000_000)
+        try tokenStore.save(
+            StoredToken(
+                accessToken: "expired",
+                accessTokenExpiresAt: referenceDate.addingTimeInterval(-1),
+                refreshToken: "old-refresh-token",
+                refreshTokenExpiresAt: referenceDate.addingTimeInterval(-1)
+            )
+        )
+        let state = AuthenticationState(
+            tokenStore: tokenStore,
+            authenticator: Self.makeAuthenticator(),
+            now: { referenceDate }
+        )
+
+        let token = await state.validAccessToken()
+
+        #expect(token == nil)
+        #expect(state.status == .tokenInvalid)
+        #expect(AuthenticationStateStubURLProtocol.recordedRequests(matching: "/login/oauth/access_token").isEmpty)
+    }
+
+    @Test("refreshAccessToken呼び出しが失敗するとtokenInvalidへ遷移しnilを返す")
+    func validAccessTokenReturnsNilWhenRefreshRequestFails() async throws {
+        AuthenticationStateStubURLProtocol.reset()
+        AuthenticationStateStubURLProtocol.stub(
+            path: "/login/oauth/access_token",
+            body: Data("{\"error\": \"bad_refresh_token\"}".utf8)
+        )
+        let keychain = InMemoryKeychain()
+        let tokenStore = KeychainTokenStore(keychain: keychain, service: "svc", account: "acct")
+        let referenceDate = Date(timeIntervalSince1970: 1_700_000_000)
+        try tokenStore.save(
+            StoredToken(
+                accessToken: "expired",
+                accessTokenExpiresAt: referenceDate.addingTimeInterval(-1),
+                refreshToken: "old-refresh-token",
+                refreshTokenExpiresAt: referenceDate.addingTimeInterval(3600)
+            )
+        )
+        let state = AuthenticationState(
+            tokenStore: tokenStore,
+            authenticator: Self.makeAuthenticator(),
+            now: { referenceDate }
+        )
+
+        let token = await state.validAccessToken()
+
+        #expect(token == nil)
+        #expect(state.status == .tokenInvalid)
+    }
 }
