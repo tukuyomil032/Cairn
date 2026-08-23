@@ -30,5 +30,22 @@ struct CairnApp: App {
                 }
         }
         .modelContainer(environment.modelContainer)
+
+        // 設定はサイドバーからではなくメニューバー常駐アイコンから開く方針
+        // （ユーザー方針転換、2026年8月）。"gearshape"はPhase10でアプリ独自アイコンが
+        // 用意され次第差し替える前提の仮アイコン。
+        MenuBarExtra("Cairn", systemImage: "gearshape") {
+            SettingsLink {
+                Text("設定を開く")
+            }
+            Divider()
+            Button("終了") {
+                NSApp.terminate(nil)
+            }
+        }
+
+        Settings {
+            SettingsPlaceholderView()
+        }
     }
 }
