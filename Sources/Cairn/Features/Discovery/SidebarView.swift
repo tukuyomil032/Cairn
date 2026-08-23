@@ -63,8 +63,11 @@ struct SidebarView: View {
                 state.togglePinned()
             } label: {
                 Image(systemName: "sidebar.left")
+                    .frame(width: 28, height: 28)
             }
             .buttonStyle(.pressable)
+            .cairnGlass(cornerRadius: 14)
+            .clipShape(Circle())
             .accessibilityLabel(state.isPinned ? "サイドバーのピン留めを解除" : "サイドバーをピン留め")
         }
         .padding(.horizontal, 12)
