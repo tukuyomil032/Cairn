@@ -91,10 +91,20 @@
 
 常時のバックグラウンドローリング更新は行わない（認証後はAPIを都度叩けるため必要性が低くなったため）。`CacheRefreshScheduler`は「起動時に前回のトップカテゴリのみ1回軽量更新」「詳細画面の遅延再検証」に縮小する。
 
-- [ ] `SearchViewModel`実装（デバウンス300ms、直近同一クエリ5秒以内は再送なし、`language:Swift OR language:"Objective-C" OR language:"Objective-C++"`を1クエリにまとめる、stale-while-revalidate）
-- [ ] 縮小版`CacheRefreshScheduler`実装（起動時に前回トップカテゴリのみ1回軽量更新、詳細画面の遅延再検証）
+- [x] `SearchViewModel`実装（デバウンス300ms、直近同一クエリ5秒以内は再送なし、`language:Swift OR language:"Objective-C" OR language:"Objective-C++"`を1クエリにまとめる、stale-while-revalidate）
+- [x] 縮小版`CacheRefreshScheduler`実装（起動時に前回トップカテゴリのみ1回軽量更新、詳細画面の遅延再検証）
 
-**テスト方針についての注意**: 実装計画には`SearchViewModel`固有のテスト項目が明記されていない。CLAUDE.mdの「実装と同時にテストを追加する」方針に従い、Phase4着手時にデバウンス処理・重複クエリ防止ロジックのテストを自前で設計する必要がある。
+**実装時に確定した設計判断（着手前にユーザーへ再確認したもの）**:
+- `SearchViewModel`/`CacheRefreshScheduler`ともに`GitHubClientProtocol`/`ModelContext`をinitで直接受け取る疎結合設計とし、`CairnEnvironment`自体はPhase4では拡張しない（本格的なDIコンテナ化はPhase5に持ち越す）
+- `CachedRepository`に`lastReadmeFetchedAt: Date?`を追加（README取得TTL 24時間の判定用）
+- 前回トップカテゴリは`Defaults`パッケージ（`Package.swift`に導入済みだが本フェーズが初使用）で永続化。Phase4は読み出し専用（`refreshTopCategoryOnLaunch()`）に留め、書き込み側（カテゴリ選択時の更新）はPhase5のDiscovery UIで追加する
+- デバウンス300ms・重複クエリ抑制5秒の判定は、Swift標準の`Clock`プロトコルを注入可能にして実待機なしにテストする設計にした（`SearchViewModel`は`ClockType: Clock`のジェネリッククラス、本番は`ContinuousClock`、テストは自作の`ManualClock`）
+- **NoiseFilter（dmg/zip資産チェック）は検索結果一覧の段階で適用する**（ユーザーの明示選択）。これは「詳細画面遷移時のみ適用」より無駄なAPI呼び出しが増えるトレードオフ——検索結果1ページ（最大30件）ごとにReleases一覧APIを追加で叩く——を承知の上での判断。アセット本体のダウンロードは発生しない
+- README取得が失敗した場合、`lastReadmeFetchedAt`のTTLは更新しない（次回訪問時に再取得を試せるようにするため。既存分類はそのまま維持する）
+- `CategoryClassifying`に`classify(topics:name:readme:)`オーバーロードを追加し、`CacheRefreshScheduler`が`CachedRepository`（SwiftDataモデル）から`Repository`（APIレスポンス型）を経由せず再分類できるようにした
+- 起動時の軽量更新呼び出しは`CairnEnvironment`を拡張せず、`CairnApp.swift`の`.task`から都度`CacheRefreshScheduler`を生成して呼ぶ最小限の配線に留めた
+
+**テスト方針**: `SearchViewModelTests`（デバウンス・重複抑制・stale-while-revalidateの順序・NoiseFilter除外・Taskキャンセル）、`CacheRefreshSchedulerTests`（前回トップカテゴリ読み出し・未設定時no-op・Releases/README TTL境界・README失敗時のTTL非更新）を追加。時間依存ロジックは`ManualClock`（Clock注入）と固定`now`クロージャで実待機なしに検証している。
 
 ## Phase 5: Discovery UI — 未着手
 

@@ -38,6 +38,30 @@ struct CachedRepositoryTests {
         #expect(fetched.first?.fullName == "owner/repo")
         #expect(fetched.first?.starCount == 42)
         #expect(fetched.first?.lastReleaseCheckedAt == nil)
+        #expect(fetched.first?.lastReadmeFetchedAt == nil)
+    }
+
+    @Test
+    func lastReadmeFetchedAtIsPersistedAcrossFetch() throws {
+        let environment = makeEnvironment()
+        let context = environment.modelContainer.mainContext
+        let readmeFetchedAt = Date(timeIntervalSince1970: 3000)
+        let repository = CachedRepository(
+            githubId: 3,
+            fullName: "owner/readme-repo",
+            starCount: 5,
+            primaryLanguage: "Swift",
+            htmlURL: "https://github.com/owner/readme-repo",
+            category: "utilities",
+            lastFetchedAt: Date(timeIntervalSince1970: 1000),
+            lastReadmeFetchedAt: readmeFetchedAt
+        )
+        context.insert(repository)
+        try context.save()
+
+        let fetched = try context.fetch(FetchDescriptor<CachedRepository>())
+
+        #expect(fetched.first?.lastReadmeFetchedAt == readmeFetchedAt)
     }
 
     @Test
