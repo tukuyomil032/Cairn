@@ -7,7 +7,7 @@ struct CairnApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            DiscoveryView()
                 .environment(environment)
                 .task {
                     let scheduler = CacheRefreshScheduler(
@@ -18,13 +18,5 @@ struct CairnApp: App {
                 }
         }
         .modelContainer(environment.modelContainer)
-    }
-}
-
-struct ContentView: View {
-    var body: some View {
-        Text("Cairn")
-            .font(.largeTitle)
-            .padding()
     }
 }
