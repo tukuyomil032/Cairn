@@ -3,10 +3,12 @@ import SwiftUI
 /// Discoveryサイドバー本体。「すべてのアプリ」/`Category.allCases`（件数バッジ付き）/
 /// 「ライブラリ」/「設定」の行と、右上のpinned⇄unpinnedトグルボタンを表示する。
 ///
-/// Liquid Glass適用領域（`docs/design/colors-and-materials.md`）: サイドバー背景は`.thickMaterial`。
+/// Liquid Glass適用領域（`docs/design/colors-and-materials.md`）: サイドバー背景は`.cairnGlass`。
 struct SidebarView: View {
     var state: SidebarState
     var viewModel: DiscoveryViewModel
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var totalCount: Int {
         viewModel.categoryCounts.values.reduce(0, +)
@@ -49,7 +51,7 @@ struct SidebarView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
         }
-        .background(.thickMaterial)
+        .cairnGlass(cornerRadius: 0)
     }
 
     private var header: some View {
@@ -62,7 +64,7 @@ struct SidebarView: View {
             } label: {
                 Image(systemName: "sidebar.left")
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressable)
             .accessibilityLabel(state.isPinned ? "サイドバーのピン留めを解除" : "サイドバーをピン留め")
         }
         .padding(.horizontal, 12)
@@ -78,9 +80,15 @@ struct SidebarView: View {
     ) -> some View {
         Button(action: action) {
             Label(title, systemImage: systemImage)
+                .padding(.vertical, 4)
+                .padding(.horizontal, 4)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(isSelected ? Color.accentColor.opacity(0.15) : Color.clear)
+                )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
         .badge(count)
-        .listRowBackground(isSelected ? Color.accentColor.opacity(0.15) : Color.clear)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: isSelected)
     }
 }
