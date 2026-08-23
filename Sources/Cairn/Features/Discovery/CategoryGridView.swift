@@ -6,12 +6,15 @@ import SwiftUI
 struct CategoryGridView: View {
     var repositories: [CachedRepository]
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     private let columns = [GridItem(.adaptive(minimum: 228), spacing: 16)]
 
     var body: some View {
         ScrollView {
             if repositories.isEmpty {
                 emptyState
+                    .transition(.opacity)
             } else {
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(repositories) { repository in
@@ -19,8 +22,10 @@ struct CategoryGridView: View {
                     }
                 }
                 .padding(20)
+                .transition(.opacity)
             }
         }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: repositories.isEmpty)
         .background(Color(nsColor: .textBackgroundColor))
     }
 
