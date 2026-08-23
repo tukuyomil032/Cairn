@@ -16,12 +16,6 @@ import SwiftData
 @Observable
 @MainActor
 final class SearchViewModel<ClockType: Clock> where ClockType.Duration == Duration {
-    /// GitHub Search APIの構文で、Swift/Objective-C/Objective-C++製リポジトリのみに絞り込む固定条件。
-    /// ユーザー入力語と結合して1クエリにまとめる。
-    static var languageFilter: String {
-        #"language:Swift OR language:"Objective-C" OR language:"Objective-C++""#
-    }
-
     private static var debounceDuration: Duration { .milliseconds(300) }
     private static var duplicateSuppressionWindow: Duration { .seconds(5) }
 
@@ -118,7 +112,7 @@ final class SearchViewModel<ClockType: Clock> where ClockType.Duration == Durati
         lastSentAt = clock.now
 
         do {
-            let apiQuery = buildAPIQuery(from: query)
+            let apiQuery = GitHubSearchQueryBuilder.build(from: query)
             let response = try await gitHubClient.searchRepositories(query: apiQuery, page: 1)
             if Task.isCancelled { return }
 
@@ -148,10 +142,6 @@ final class SearchViewModel<ClockType: Clock> where ClockType.Duration == Durati
                 errorMessage = "検索に失敗しました"
             }
         }
-    }
-
-    private func buildAPIQuery(from userInput: String) -> String {
-        "\(userInput) \(Self.languageFilter)"
     }
 
     private func upsert(

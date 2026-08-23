@@ -12,6 +12,7 @@ actor MockGitHubClient: GitHubClientProtocol {
     private(set) var searchCallCount = 0
     private(set) var recordedQueries: [String] = []
     private(set) var releasesCallCount = 0
+    private(set) var readmeCallCount = 0
 
     func searchRepositories(query: String, page: Int) async throws -> SearchRepositoriesResult {
         searchCallCount += 1
@@ -29,6 +30,7 @@ actor MockGitHubClient: GitHubClientProtocol {
     }
 
     func readme(owner: String, repo: String) async throws -> String? {
+        readmeCallCount += 1
         guard let handler = readmeHandler else { return nil }
         return try await handler(owner, repo)
     }
@@ -45,5 +47,9 @@ actor MockGitHubClient: GitHubClientProtocol {
 
     func setReleasesHandler(_ handler: @escaping @Sendable (String, String) async throws -> [Release]) {
         releasesHandler = handler
+    }
+
+    func setReadmeHandler(_ handler: @escaping @Sendable (String, String) async throws -> String?) {
+        readmeHandler = handler
     }
 }
