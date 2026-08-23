@@ -40,44 +40,49 @@ struct DiscoveryView: View {
         }
     }
 
-    @ViewBuilder
+    /// pinned/unpinnedで`HStack`/`ZStack`を丸ごと入れ替えるとSwiftUIが両状態の差分を
+    /// 見出せずアニメーションできないため、常に同じ`HStack`をルートにし、その中で
+    /// サイドバーの有無・ホバーオーバーレイの有無を`if`で切り替える設計に統一している。
     private func layout(discoveryViewModel: DiscoveryViewModel, searchViewModel: SearchViewModel<ContinuousClock>)
         -> some View
     {
-        if sidebarState.isPinned {
-            HStack(spacing: 0) {
+        HStack(spacing: 0) {
+            if sidebarState.isPinned {
                 SidebarView(state: sidebarState, viewModel: discoveryViewModel)
                     .frame(width: Self.sidebarWidth)
+                    .transition(.move(edge: .leading))
                 Divider()
-                content(discoveryViewModel: discoveryViewModel, searchViewModel: searchViewModel)
             }
-        } else {
+
             ZStack(alignment: .leading) {
                 content(discoveryViewModel: discoveryViewModel, searchViewModel: searchViewModel)
                     .frame(maxWidth: .infinity)
 
-                Color.clear
-                    .frame(width: Self.triggerZoneWidth)
-                    .contentShape(Rectangle())
-                    .onHover { hovering in
-                        if hovering { sidebarState.hoverEntered() } else { sidebarState.hoverExited() }
-                    }
-
-                if sidebarState.isRevealed {
-                    SidebarView(state: sidebarState, viewModel: discoveryViewModel)
-                        .frame(width: Self.sidebarWidth)
-                        .shadow(radius: 12, x: 4)
+                if !sidebarState.isPinned {
+                    Color.clear
+                        .frame(width: Self.triggerZoneWidth)
+                        .contentShape(Rectangle())
                         .onHover { hovering in
                             if hovering { sidebarState.hoverEntered() } else { sidebarState.hoverExited() }
                         }
-                        .transition(reduceMotion ? .identity : .move(edge: .leading))
-                        .animation(
-                            reduceMotion ? nil : .bouncy(duration: 0.4),
-                            value: sidebarState.isRevealed
-                        )
+
+                    if sidebarState.isRevealed {
+                        SidebarView(state: sidebarState, viewModel: discoveryViewModel)
+                            .frame(width: Self.sidebarWidth)
+                            .shadow(radius: 12, x: 4)
+                            .onHover { hovering in
+                                if hovering { sidebarState.hoverEntered() } else { sidebarState.hoverExited() }
+                            }
+                            .transition(reduceMotion ? .identity : .move(edge: .leading))
+                    }
                 }
             }
+            // ZStack自体（常に存在する親）に付与することで、isRevealedがtrue→falseに
+            // なる瞬間もこの修飾子がツリーに残り続け、退場アニメーションが機能する
+            // （if節の内側に付与すると、falseになった瞬間に修飾子ごと消えてしまう）。
+            .animation(reduceMotion ? nil : .bouncy(duration: 0.4), value: sidebarState.isRevealed)
         }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: sidebarState.isPinned)
     }
 
     private func content(
