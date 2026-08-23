@@ -9,6 +9,11 @@ struct CategoryDisplayNameTests {
         #expect(!category.displayName.isEmpty)
     }
 
+    @Test("全ケースで空でないSF Symbol名を返す", arguments: Category.allCases)
+    func returnsNonEmptySFSymbolName(category: Category) {
+        #expect(!category.sfSymbolName.isEmpty)
+    }
+
     @Test("各ケースが想定した日本語ラベルと一致する")
     func matchesExpectedLabels() {
         #expect(Category.developerTools.displayName == "開発者ツール")
