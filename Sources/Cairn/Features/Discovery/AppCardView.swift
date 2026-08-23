@@ -3,14 +3,12 @@ import SwiftUI
 /// カテゴリグリッドの1カード。アプリ名/開発者/star数/言語カラードット/subTagsチップを表示する。
 ///
 /// コンテンツ層のためLiquid Glassは使わず不透明背景（`docs/design/colors-and-materials.md`の
-/// `card-bg`相当）を敷く。ホバー時のわずかな浮き上がりはフィードバック目的のモーションで、
-/// Reduce Motion有効時は無効化する。
+/// `card-bg`相当）を敷く。ホバー時の3Dパララックス（`ParallaxHoverModifier`）はフィードバック
+/// 目的のモーションで、Reduce Motion有効時は回転角のみ無効化する。
 struct AppCardView: View {
     var repository: CachedRepository
 
     @Environment(AppEnvironment.self) private var appEnvironment
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var isHovering = false
 
     private var developerName: String {
         repository.fullName.split(separator: "/").first.map(String.init) ?? repository.fullName
@@ -70,9 +68,7 @@ struct AppCardView: View {
             RoundedRectangle(cornerRadius: 11)
                 .strokeBorder(Color.primary.opacity(0.07))
         )
-        .scaleEffect(isHovering ? 1.015 : 1)
-        .animation(reduceMotion ? nil : .spring(response: 0.22, dampingFraction: 0.7), value: isHovering)
-        .onHover { isHovering = $0 }
+        .parallaxHover(maxAngle: 8)
     }
 
     private var appIcon: some View {
