@@ -72,7 +72,7 @@ struct DiscoveryView: View {
                         }
                         .transition(reduceMotion ? .identity : .move(edge: .leading))
                         .animation(
-                            reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.78),
+                            reduceMotion ? nil : .bouncy(duration: 0.4),
                             value: sidebarState.isRevealed
                         )
                 }
@@ -87,6 +87,12 @@ struct DiscoveryView: View {
         VStack(spacing: 0) {
             SearchBarView(searchViewModel: searchViewModel, authenticationState: appEnvironment.authenticationState)
             CategoryGridView(repositories: discoveryViewModel.repositoriesByCategory)
+                .id(discoveryViewModel.selectedCategory)
+                .transition(.opacity)
+                .animation(
+                    reduceMotion ? nil : .easeInOut(duration: 0.2),
+                    value: discoveryViewModel.selectedCategory
+                )
         }
     }
 }
