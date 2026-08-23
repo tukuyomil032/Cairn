@@ -108,7 +108,7 @@
 
 ## Phase 5: Discovery UI — 未着手
 
-**判断背景**: このフェーズはユーザーとの直接の壁打ちがほとんどなく、「標準的なmacOSカタログアプリ構造」（`NavigationSplitView`+サイドバー+グリッド一覧）がほぼそのまま採用された。ユーザーからの直接指示は「HIGなども参考にしつつ、UIデザイン用のツールやスキルも活用してほしい」という一文のみで、詳細なビジュアルデザインへの深い壁打ちは行われていない。
+**判断背景**: 当初この計画を書いた時点ではユーザーとの直接の壁打ちがほとんどなく、「標準的なmacOSカタログアプリ構造」（`NavigationSplitView`+サイドバー+グリッド一覧）が仮採用されていた。その後、2026年8月に実装着手前のビジュアル壁打ちセッションを別途実施し、`design`スキル（Claude Designキャンバス）でDiscovery/Install/Settings/Library/AppDetail/エラー状態を含む全画面モックアップと、サイドバーのピン留め/解除インタラクションのプロトタイプを作成済み。デザイン原則（Liquid Glassの適用範囲、SF Symbols限定方針、モーション方針、エラーハンドリングUIパターン）はルート`DESIGN.md`と`docs/design/`配下に文書化してある——Phase5実装時は必ず`DESIGN.md`を先に読むこと。
 
 - [ ] `SidebarView`実装（全カテゴリ("すべて")/`Category.allCases`（件数バッジ付き）/ライブラリ/設定）
 - [ ] `CategoryGridView`実装（`LazyVGrid`+`AppCardView`: 名前/star数/言語カラー/サブタグチップ）
@@ -116,13 +116,13 @@
 - [ ] 言語カラー表示用の`LinguistColors.json`用意
 - [ ] `SearchViewModel`等の状態を`@Observable final class XxxViewModel`として実装し、`AppEnvironment`（GitHubClient/RateLimiter/ModelContainer/Install・Uninstall Serviceを保持）から`.environment(_:)`経由で注入する構成にする（テスト時にモック差し替え可能にするため）
 
-**実装時の注意**: グローバルのCLAUDE.md（`~/.claude/CLAUDE.md`）に登録されている`ui-ux-pro-max`（新規ページ・コンポーネントのデザイン時に必須）・`web-design-guidelines`（UIコードレビュー前）・`apple-design`（Apple風のジェスチャー・スプリングアニメーション・マテリアル）スキルを積極活用し、AI生成感の強い配色・過度な装飾にならないよう注意する。
+**実装時の注意**: グローバルのCLAUDE.md（`~/.claude/CLAUDE.md`）に登録されている`ui-ux-pro-max`（新規ページ・コンポーネントのデザイン時に必須）・`web-design-guidelines`（UIコードレビュー前）・`apple-design`（Apple風のジェスチャー・スプリングアニメーション・マテリアル）スキルを積極活用し、AI生成感の強い配色・過度な装飾にならないよう注意する。加えて、ルート`DESIGN.md`（[モックアップ](https://claude.ai/code/artifact/7e00278f-4145-4e9e-82fe-7fb6495a994f)へのリンク含む）と`docs/design/sidebar-interaction.md`のサイドバーのピン留め/解除仕様を実装の基準にする。
 
 **テスト方針についての注意**: 実装計画にPhase5固有のテスト項目は明記されていない。Phase5着手時に自前で定義する（ViewModelのロジック部分を中心に、View自体は実機確認中心になる見込み）。
 
 ## Phase 6: AppDetail UI — 未着手
 
-**判断背景**: README表示方式は壁打ちセッションでも結論が出ておらず「未解決事項」として持ち越されていた。実装計画では「まず標準API`AttributedString(markdown:)`で開始し、表現力不足が問題になれば`swift-markdown`等の追加を検討する」という段階的方針を採用している。`swift-markdown`のようなSPM追加を検討する際は、Phase10で確立した「基本はApple標準API、ただし広く使われている定番SPMは可」という依存関係採用基準（`docs/dependencies.md`参照）に沿って判断する。
+**判断背景**: README表示方式は壁打ちセッションでも結論が出ておらず「未解決事項」として持ち越されていた。実装計画では「まず標準API`AttributedString(markdown:)`で開始し、表現力不足が問題になれば`swift-markdown`等の追加を検討する」という段階的方針を採用している。`swift-markdown`のようなSPM追加を検討する際は、Phase10で確立した「基本はApple標準API、ただし広く使われている定番SPMは可」という依存関係採用基準（`docs/dependencies.md`参照）に沿って判断する。加えて、README/説明文をシステム言語が日本語の場合デフォルトで日本語訳表示する機能（Apple Translation framework、オンデバイス）をPhase6のタスクに含める——詳細は`docs/design/localization.md`参照。
 
 - [ ] `AppDetailView`実装（README概要を`AttributedString(markdown:)`標準APIでレンダリング）
 - [ ] `AppDetailViewModel`実装
