@@ -14,6 +14,7 @@ final class CachedRepository {
     var subTags: [String]
     var lastFetchedAt: Date
     var lastReleaseCheckedAt: Date?
+    var lastReadmeFetchedAt: Date?
 
     @Relationship(deleteRule: .cascade, inverse: \CachedRelease.repository)
     var releases: [CachedRelease]
@@ -29,6 +30,7 @@ final class CachedRepository {
         subTags: [String] = [],
         lastFetchedAt: Date,
         lastReleaseCheckedAt: Date? = nil,
+        lastReadmeFetchedAt: Date? = nil,
         releases: [CachedRelease] = []
     ) {
         self.githubId = githubId
@@ -41,6 +43,7 @@ final class CachedRepository {
         self.subTags = subTags
         self.lastFetchedAt = lastFetchedAt
         self.lastReleaseCheckedAt = lastReleaseCheckedAt
+        self.lastReadmeFetchedAt = lastReadmeFetchedAt
         self.releases = releases
     }
 }
