@@ -117,6 +117,16 @@ struct CategoryClassifierTests {
         #expect(result.category == .productivity)
     }
 
+    @Test("topics/name/readme直接指定のオーバーロードもRepository経由と同じ結果になる")
+    func directOverloadMatchesRepositoryBasedClassification() {
+        let classifier = CategoryClassifier(keywords: makeFixtureKeywords())
+
+        let result = classifier.classify(topics: ["cli"], name: "TodoMaster", readme: nil)
+
+        #expect(result.category == .developerTools)
+        #expect(result.subTags == ["cli"])
+    }
+
     @Test("実運用のCategoryKeywords.jsonがバンドルから正しく読み込める")
     func loadsBundledKeywordsWithoutCrashing() {
         let keywords = CategoryKeywords.loadBundled()

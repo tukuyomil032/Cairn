@@ -11,6 +11,11 @@ struct ClassificationResult: Equatable, Sendable {
 /// 将来的にスコアリング方式を差し替えられるようStrategyパターン化する。
 protocol CategoryClassifying: Sendable {
     func classify(repository: Repository, readme: String?) -> ClassificationResult
+
+    /// topics/名前/READMEを直接指定して分類する。`CachedRepository`（SwiftDataモデル）のように
+    /// `Repository`（APIレスポンス型）を持たない呼び出し元（`CacheRefreshScheduler`の詳細画面
+    /// 再検証処理）向けの軽量オーバーロード。
+    func classify(topics: [String], name: String, readme: String?) -> ClassificationResult
 }
 
 /// topics完全一致(3点) > リポジトリ名部分一致(2点) > README冒頭一致(1点)の
@@ -26,8 +31,12 @@ struct CategoryClassifier: CategoryClassifying {
     }
 
     func classify(repository: Repository, readme: String?) -> ClassificationResult {
-        let topics = Set(repository.topics.map { $0.lowercased() })
-        let nameLowercased = repository.name.lowercased()
+        classify(topics: repository.topics, name: repository.name, readme: readme)
+    }
+
+    func classify(topics: [String], name: String, readme: String?) -> ClassificationResult {
+        let topicsSet = Set(topics.map { $0.lowercased() })
+        let nameLowercased = name.lowercased()
         let readmePrefix = readme.map { String($0.prefix(Self.readmePrefixLength)).lowercased() }
 
         var bestCategory: Category?
@@ -39,7 +48,7 @@ struct CategoryClassifier: CategoryClassifying {
             guard let categoryKeywords = keywords.keywordsByCategory[category] else { continue }
             var score = 0
             for keyword in categoryKeywords {
-                if topics.contains(keyword) { score += 3 }
+                if topicsSet.contains(keyword) { score += 3 }
                 if nameLowercased.contains(keyword) { score += 2 }
                 if let readmePrefix, readmePrefix.contains(keyword) { score += 1 }
             }
@@ -49,6 +58,6 @@ struct CategoryClassifier: CategoryClassifying {
             }
         }
 
-        return ClassificationResult(category: bestCategory ?? .other, subTags: repository.topics)
+        return ClassificationResult(category: bestCategory ?? .other, subTags: topics)
     }
 }
