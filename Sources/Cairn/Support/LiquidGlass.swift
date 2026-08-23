@@ -65,7 +65,7 @@ private struct CairnGlassModifier: ViewModifier {
     func body(content: Content) -> some View {
         switch CairnGlass.strategy {
         case .privateAPI:
-            CairnGlassEffectView(cornerRadius: cornerRadius, variant: variant, content: content)
+            content.background(CairnGlassBackgroundView(cornerRadius: cornerRadius, variant: variant))
         case .publicGlassEffect:
             content.glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
         case .material:
@@ -74,51 +74,44 @@ private struct CairnGlassModifier: ViewModifier {
     }
 }
 
-/// 非公開API`NSGlassEffectView`をランタイム経由で操作するラッパー。
+/// 非公開API`NSGlassEffectView`をランタイム経由で操作する、コンテンツを持たない背景専用ビュー。
+///
+/// `.background(_:)`修飾子はSwiftUIが前景コンテンツの実測サイズを自動的に背景へ伝えるため、
+/// このビュー自身はサイズ計算を一切実装する必要がない（`NSHostingView`で前景を再ホストする
+/// 設計は、SwiftUIのレイアウトシステムに正しいサイズが伝わらず内容が消える不具合の原因になっていた）。
 ///
 /// Objective-Cの例外はSwiftの`try`/`catch`で捕捉できないため、KVC/セレクタ呼び出しの
 /// 前に必ず`responds(to:)`で応答可能かを確認し、応答しない場合は呼び出し自体をスキップする
 /// （これが唯一有効な防御であり、事後のエラーハンドリングでは代替できない）。
-private struct CairnGlassEffectView<Content: View>: NSViewRepresentable {
+private struct CairnGlassBackgroundView: NSViewRepresentable {
     let cornerRadius: CGFloat
     let variant: CairnGlassVariant
-    let content: Content
 
     func makeNSView(context: Context) -> NSView {
         guard let glassClass = NSClassFromString("NSGlassEffectView") as? NSView.Type else {
             return makeFallbackView()
         }
         let glassView = glassClass.init(frame: .zero)
-
-        if glassView.responds(to: NSSelectorFromString("setCornerRadius:")) {
-            glassView.setValue(cornerRadius, forKey: "cornerRadius")
-        }
+        applyCornerRadius(to: glassView)
         applyVariant(to: glassView)
-
-        let hosting = NSHostingView(rootView: AnyView(content))
-        hosting.translatesAutoresizingMaskIntoConstraints = false
-
-        if glassView.responds(to: NSSelectorFromString("setContentView:")) {
-            glassView.setValue(hosting, forKey: "contentView")
-        } else {
-            embed(hosting, in: glassView)
-        }
         return glassView
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        if let hosting = findHostingView(in: nsView) {
-            hosting.rootView = AnyView(content)
-        }
+        applyCornerRadius(to: nsView)
+        applyVariant(to: nsView)
     }
 
     private func makeFallbackView() -> NSView {
         let fallback = NSVisualEffectView()
         fallback.material = .underWindowBackground
-        let hosting = NSHostingView(rootView: AnyView(content))
-        hosting.translatesAutoresizingMaskIntoConstraints = false
-        embed(hosting, in: fallback)
+        fallback.blendingMode = .behindWindow
         return fallback
+    }
+
+    private func applyCornerRadius(to glassView: NSView) {
+        guard glassView.responds(to: NSSelectorFromString("setCornerRadius:")) else { return }
+        glassView.setValue(cornerRadius, forKey: "cornerRadius")
     }
 
     private func applyVariant(to glassView: NSView) {
@@ -132,27 +125,5 @@ private struct CairnGlassEffectView<Content: View>: NSViewRepresentable {
         let implementation = method_getImplementation(method)
         let setVariant = unsafeBitCast(implementation, to: VariantSetterIMP.self)
         setVariant(glassView, selector, variant.rawValue)
-    }
-
-    private func embed(_ hosting: NSHostingView<AnyView>, in container: NSView) {
-        container.addSubview(hosting)
-        NSLayoutConstraint.activate([
-            hosting.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            hosting.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            hosting.topAnchor.constraint(equalTo: container.topAnchor),
-            hosting.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-        ])
-    }
-
-    private func findHostingView(in view: NSView) -> NSHostingView<AnyView>? {
-        if let hosting = view as? NSHostingView<AnyView> {
-            return hosting
-        }
-        for subview in view.subviews {
-            if let found = findHostingView(in: subview) {
-                return found
-            }
-        }
-        return nil
     }
 }
