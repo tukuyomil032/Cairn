@@ -2,11 +2,12 @@ import SwiftUI
 
 /// Discoveryの検索バー。API即応検索(`SearchViewModel`)の入力欄と、未認証時のサインイン誘導バナーを表示する。
 ///
-/// Liquid Glass適用領域（`docs/design/colors-and-materials.md`）: 検索バー領域は`.thickMaterial`。
+/// Liquid Glass適用領域（`docs/design/colors-and-materials.md`）: 検索バー領域は`.cairnGlass`。
 struct SearchBarView: View {
     @Bindable var searchViewModel: SearchViewModel<ContinuousClock>
     var authenticationState: AuthenticationState
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isPresentingSignIn = false
 
     private var isUnauthenticated: Bool {
@@ -27,11 +28,13 @@ struct SearchBarView: View {
 
             if isUnauthenticated {
                 signInBanner
+                    .transition(.opacity.combined(with: .move(edge: .trailing)))
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .background(.thickMaterial)
+        .cairnGlass(cornerRadius: 0)
+        .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.75), value: isUnauthenticated)
         .sheet(isPresented: $isPresentingSignIn) {
             DeviceFlowSignInView(authState: authenticationState)
         }
@@ -44,7 +47,7 @@ struct SearchBarView: View {
             Label("サインインでAPI上限を緩和", systemImage: "key.fill")
                 .font(.caption)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
         .foregroundStyle(.secondary)
     }
 }
