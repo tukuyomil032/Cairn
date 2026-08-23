@@ -63,11 +63,11 @@ private func makeRelease(assetName: String? = "App.dmg") -> Release {
 @MainActor
 @Suite(.serialized)
 struct SearchViewModelTests {
-    // CairnEnvironmentを戻り値のModelContextだけでなくインスタンスごと保持し続けないと、
+    // AppEnvironmentを戻り値のModelContextだけでなくインスタンスごと保持し続けないと、
     // スコープを抜けた時点でModelContainerが解放されクラッシュするため、
     // 各テストで環境そのものをローカル変数に束縛する（CachedRepositoryTestsと同様のパターン）。
-    private func makeEnvironment() -> CairnEnvironment {
-        CairnEnvironment(inMemory: true)
+    private func makeEnvironment() -> AppEnvironment {
+        AppEnvironment(inMemory: true)
     }
 
     /// 条件が満たされるまで`Task.yield()`を繰り返し、非同期チェーンの完了を待つ。

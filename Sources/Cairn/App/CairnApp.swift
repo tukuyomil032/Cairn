@@ -3,16 +3,15 @@ import SwiftUI
 
 @main
 struct CairnApp: App {
-    private let environment = CairnEnvironment()
+    @State private var environment = AppEnvironment()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environment(environment)
                 .task {
-                    // CairnEnvironment自体の本格的なDI拡張（GitHubClient/AuthenticationState等の保持）は
-                    // Phase5で行う。Phase4時点ではここで都度生成し、起動時1回だけ軽量更新を実行する。
                     let scheduler = CacheRefreshScheduler(
-                        gitHubClient: GitHubClient(),
+                        gitHubClient: environment.gitHubClient,
                         modelContext: environment.modelContainer.mainContext
                     )
                     await scheduler.refreshTopCategoryOnLaunch()

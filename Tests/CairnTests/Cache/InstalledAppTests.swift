@@ -7,8 +7,8 @@ import Testing
 @MainActor
 @Suite(.serialized)
 struct InstalledAppTests {
-    private func makeEnvironment() -> CairnEnvironment {
-        CairnEnvironment(inMemory: true)
+    private func makeEnvironment() -> AppEnvironment {
+        AppEnvironment(inMemory: true)
     }
 
     @Test

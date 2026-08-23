@@ -7,11 +7,11 @@ import Testing
 @MainActor
 @Suite(.serialized)
 struct CachedRepositoryTests {
-    // CairnEnvironmentを戻り値のModelContextだけでなくインスタンスごと保持し続けないと、
+    // AppEnvironmentを戻り値のModelContextだけでなくインスタンスごと保持し続けないと、
     // スコープを抜けた時点でModelContainerが解放されクラッシュするため、
     // 各テストで環境そのものをローカル変数に束縛する。
-    private func makeEnvironment() -> CairnEnvironment {
-        CairnEnvironment(inMemory: true)
+    private func makeEnvironment() -> AppEnvironment {
+        AppEnvironment(inMemory: true)
     }
 
     @Test
