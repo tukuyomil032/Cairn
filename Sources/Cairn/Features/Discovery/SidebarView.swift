@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// Discoveryサイドバー本体。「すべてのアプリ」/`Category.allCases`（件数バッジ付き）/
-/// 「ライブラリ」/「設定」の行と、右上のpinned⇄unpinnedトグルボタンを表示する。
+/// 「ライブラリ」の行と、右上のpinned⇄unpinnedトグルボタンを表示する。「設定」はメニューバー
+/// 常駐アイコンから開く方針のためサイドバーには含めない。
 ///
 /// Liquid Glass適用領域（`docs/design/colors-and-materials.md`）: サイドバー背景は`.cairnGlass`。
 struct SidebarView: View {
@@ -38,18 +39,13 @@ struct SidebarView: View {
                         }
                     }
                 }
+
+                // ライブラリ画面自体はPhase8で実装。件数バッジは実装済みアプリ数と
+                // 連携するまでは0固定のプレースホルダー。
+                row(title: "ライブラリ", systemImage: "books.vertical", count: 0, isSelected: false) {}
             }
             .listStyle(.sidebar)
             .scrollContentBackground(.hidden)
-
-            Divider()
-
-            VStack(alignment: .leading, spacing: 2) {
-                Label("ライブラリ", systemImage: "books.vertical")
-                Label("設定", systemImage: "gearshape")
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
         }
         .cairnGlass(cornerRadius: 0)
     }
