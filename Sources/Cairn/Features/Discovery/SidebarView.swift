@@ -78,12 +78,14 @@ struct SidebarView: View {
     ) -> some View {
         Button(action: action) {
             Label(title, systemImage: systemImage)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.vertical, 4)
                 .padding(.horizontal, 4)
                 .background(
                     RoundedRectangle(cornerRadius: 6)
                         .fill(isSelected ? Color.accentColor.opacity(0.15) : Color.clear)
                 )
+                .contentShape(Rectangle())
         }
         .buttonStyle(.pressable)
         .badge(count)
