@@ -21,6 +21,10 @@ struct SidebarView: View {
                 .badge(totalCount)
                 .tag(SidebarSelection.all)
 
+            // 起動時に1回だけ取得する人気macOSアプリ一覧（言語不問、TrendingViewModel）。
+            Label("トレンド", systemImage: "flame")
+                .tag(SidebarSelection.trending)
+
             Section("カテゴリ") {
                 ForEach(Category.allCases, id: \.self) { category in
                     Label(category.displayName, systemImage: category.sfSymbolName)
