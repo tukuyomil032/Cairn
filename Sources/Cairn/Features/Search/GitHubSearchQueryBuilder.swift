@@ -14,3 +14,10 @@ enum GitHubSearchQueryBuilder {
         "\(userInput) (\(languageFilter))"
     }
 }
+
+extension GitHubSearchQueryBuilder {
+    /// 言語を問わず、macOSアプリらしいtopicsが付いたリポジトリに絞るトレンド用クエリ。
+    /// GitHubに公式の「トレンド」APIは存在しないため、star数降順を「人気」の代理指標として使う
+    /// （日次の伸び率等は取得できないため、これは近似であることをコード内コメントに明記する）。
+    static let trendingQuery = #"(topic:macos OR topic:macos-app)"#
+}
