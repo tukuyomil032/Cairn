@@ -106,19 +106,25 @@
 
 **テスト方針**: `SearchViewModelTests`（デバウンス・重複抑制・stale-while-revalidateの順序・NoiseFilter除外・Taskキャンセル）、`CacheRefreshSchedulerTests`（前回トップカテゴリ読み出し・未設定時no-op・Releases/README TTL境界・README失敗時のTTL非更新）を追加。時間依存ロジックは`ManualClock`（Clock注入）と固定`now`クロージャで実待機なしに検証している。
 
-## Phase 5: Discovery UI — 未着手
+## Phase 5: Discovery UI — 完了
 
-**判断背景**: 当初この計画を書いた時点ではユーザーとの直接の壁打ちがほとんどなく、「標準的なmacOSカタログアプリ構造」（`NavigationSplitView`+サイドバー+グリッド一覧）が仮採用されていた。その後、2026年8月に実装着手前のビジュアル壁打ちセッションを別途実施し、`design`スキル（Claude Designキャンバス）でDiscovery/Install/Settings/Library/AppDetail/エラー状態を含む全画面モックアップと、サイドバーのピン留め/解除インタラクションのプロトタイプを作成済み。デザイン原則（Liquid Glassの適用範囲、SF Symbols限定方針、モーション方針、エラーハンドリングUIパターン）はルート`DESIGN.md`と`docs/design/`配下に文書化してある——Phase5実装時は必ず`DESIGN.md`を先に読むこと。
+**判断背景**: 当初この計画を書いた時点ではユーザーとの直接の壁打ちがほとんどなく、「標準的なmacOSカタログアプリ構造」（`NavigationSplitView`+サイドバー+グリッド一覧）が仮採用されていた。その後、2026年8月に実装着手前のビジュアル壁打ちセッションを別途実施し、`design`スキル（Claude Designキャンバス）でDiscovery/Install/Settings/Library/AppDetail/エラー状態を含む全画面モックアップと、サイドバーのピン留め/解除インタラクションのプロトタイプを作成済みだった。しかし実装フェーズで複数ラウンドの試行錯誤を経て、最終的にはモックアップの独自ピン/ホバー展開インタラクションを撤回し、当初仮採用していた素の`NavigationSplitView`に回帰する形で決着した（詳細は下記「実装時の紆余曲折」参照）。
 
-- [ ] `SidebarView`実装（全カテゴリ("すべて")/`Category.allCases`（件数バッジ付き）/ライブラリ/設定）
-- [ ] `CategoryGridView`実装（`LazyVGrid`+`AppCardView`: 名前/star数/言語カラー/サブタグチップ）
-- [ ] `SearchBarView`実装（API即応検索、未認証時はサインイン誘導バナーを控えめに表示）
-- [ ] 言語カラー表示用の`LinguistColors.json`用意
-- [ ] `SearchViewModel`等の状態を`@Observable final class XxxViewModel`として実装し、`AppEnvironment`（GitHubClient/RateLimiter/ModelContainer/Install・Uninstall Serviceを保持）から`.environment(_:)`経由で注入する構成にする（テスト時にモック差し替え可能にするため）
+- [x] `SidebarView`実装（`NavigationSplitView`+`List(selection:)`。全カテゴリ("すべて")/`Category.allCases`（件数バッジ付き）/ライブラリ。「設定」はメニューバー常駐アイコンへ移動したためサイドバーには含めない）
+- [x] `CategoryGridView`実装（`LazyVGrid`+`AppCardView`: 名前/star数/言語カラー/サブタグチップ、3Dパララックスホバー付き）
+- [x] 検索バー実装（`SearchBarView`という専用Viewは作らず、`.searchable(placement: .toolbar)`で実装。未認証時はツールバーにサインインボタンを表示）
+- [x] 言語カラー表示用の`LinguistColors.json`用意（GitHub Linguistの全688言語分を収録）
+- [x] `SearchViewModel`/`DiscoveryViewModel`を`@Observable final class`として実装し、`AppEnvironment`（GitHubClient/AuthenticationState/ModelContainer/LinguistColorsを保持。Install/Uninstall Serviceは未実装のためプロパティ自体を持たせていない）から`.environment(_:)`経由で注入する構成にした
+- [x] `MenuBarExtra`+`Settings`シーンで「設定」をメニューバー常駐化（本格的な設定項目はPhase11で実装、現状は`SettingsPlaceholderView`というプレースホルダーのみ）
 
-**実装時の注意**: グローバルのCLAUDE.md（`~/.claude/CLAUDE.md`）に登録されている`ui-ux-pro-max`（新規ページ・コンポーネントのデザイン時に必須）・`web-design-guidelines`（UIコードレビュー前）・`apple-design`（Apple風のジェスチャー・スプリングアニメーション・マテリアル）スキルを積極活用し、AI生成感の強い配色・過度な装飾にならないよう注意する。加えて、ルート`DESIGN.md`（[モックアップ](https://claude.ai/code/artifact/7e00278f-4145-4e9e-82fe-7fb6495a994f)へのリンク含む）と`docs/design/sidebar-interaction.md`のサイドバーのピン留め/解除仕様を実装の基準にする。
+**実装時の紆余曲折（重要な設計判断の記録）**:
+1. 当初モックアップ通り、独自`HStack`/`ZStack`構造でXcodeナビゲータ風の「ピン留め解除時、カーソルを左端に寄せるとサイドバーがホバー展開する」インタラクションを実装した。
+2. Liquid Glass感を出すため、非公開API`NSGlassEffectView`をランタイム解決する独自ラッパーを実装したが、検索バーが非表示になる・サイドバーがピン留め中だけガラスが消える・ボタンの主張が強すぎる、という不具合を3件連続で起こした。
+3. 非公開APIを廃し標準`Material`（`.thickMaterial`）に切り替えたが、サイドバーの選択ハイライトに「立体感がない」という指摘を受けた。
+4. MITライセンスの参考ネイティブアプリ2件（`msitarzewski/brew-browser`、`steipete/CodexBar`）を実際に調査した結果、いずれも独自実装を一切持たず、標準`NavigationSplitView`/`List(selection:)`/`.searchable()`だけで見栄えの良いネイティブサイドバーを実現していると判明。「独自実装をできるだけ避け、Apple公式のSwiftUI/AppKit機能を最優先で使う」という原則をCLAUDE.mdに明文化し、Cairnも`NavigationSplitView`へ全面移行した。
+5. この移行に伴い、独自のピン/ホバー展開インタラクション仕様は撤回した（`docs/design/sidebar-interaction.md`に撤回経緯を記録済み）。`SidebarState.swift`・`LiquidGlass.swift`・`PressableButtonStyle.swift`・`SearchBarView.swift`は最終的にすべて削除し、標準APIのみの構成に落ち着いた。
 
-**テスト方針についての注意**: 実装計画にPhase5固有のテスト項目は明記されていない。Phase5着手時に自前で定義する（ViewModelのロジック部分を中心に、View自体は実機確認中心になる見込み）。
+**テスト方針**: `Category+DisplayNameTests`、`LinguistColorsTests`、`DiscoveryViewModelTests`（カテゴリフィルタ・件数集計・`lastTopCategory`書き込み）、`ParallaxHoverModifierTests`（座標変換の純粋関数）を実装。View自体（`SidebarView`/`CategoryGridView`/`AppCardView`/`DiscoveryView`）はロジックを持たないため実機確認中心とした。
 
 ## Phase 6: AppDetail UI — 未着手
 
