@@ -62,8 +62,7 @@ struct SidebarView: View {
                     .frame(width: 28, height: 28)
             }
             .buttonStyle(.pressable)
-            .cairnGlass(cornerRadius: 14)
-            .clipShape(Circle())
+            .glassEffect(.regular.interactive(), in: .circle)
             .accessibilityLabel(state.isPinned ? "サイドバーのピン留めを解除" : "サイドバーをピン留め")
         }
         .padding(.horizontal, 12)
