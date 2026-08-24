@@ -70,6 +70,12 @@ Notes when touching dependencies:
 
 `version.env` holds `MARKETING_VERSION` / `BUILD_NUMBER` as the single source of truth (single-channel only — no Beta channel yet). `release.yml` reads from it unless a version is supplied via `workflow_dispatch` input.
 
+## UI implementation practices
+
+- **Native APIs first**: Prefer Apple's official SwiftUI/AppKit components over hand-rolled custom implementations — `NavigationSplitView`, `List(selection:)`, `.searchable()`, stock `ButtonStyle`s, `Settings`/`MenuBarExtra` scenes, `.glassEffect(_:in:)`. Only build custom UI/state machinery (custom hover interactions, custom materials, custom button styles) when a genuine product requirement truly can't be met natively — and surface that trade-off to the user before building it, rather than deciding unilaterally to go custom.
+- **Reference implementations**: When unsure how to achieve a native-quality look/interaction, consult `msitarzewski/brew-browser` and `steipete/CodexBar` — both MIT-licensed native SwiftUI macOS apps. Read their actual source for the pattern (check the license of any other reference before reusing code directly — MIT/permissive allows real code reuse, GPL means idea-only). Both apps' polish comes from using stock components with zero overrides, not custom rendering — that's the lesson to take from them, not just their specific UI choices.
+  - Background: Cairn's Phase5 Discovery sidebar went through several rounds of custom implementation (a private-API Liquid Glass wrapper, a hand-rolled pin/hover-reveal state machine, a custom button style, a manually-painted selection highlight) that each caused real bugs and never reached native visual quality. Migrating to stock `NavigationSplitView` + `List(selection:)` + `.searchable()` fixed it in one pass.
+
 ## Development practices
 
 - **Phased execution**: implement one phase at a time (per `docs/progress.md`); don't jump ahead to a later phase's work in the same pass unless it's tightly coupled to the phase in progress.
