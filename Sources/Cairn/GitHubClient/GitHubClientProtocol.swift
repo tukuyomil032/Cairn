@@ -6,7 +6,10 @@ import Foundation
 /// `GitHubClient`本体はこのプロトコルの背後に隠す。
 protocol GitHubClientProtocol: Sendable {
     /// リポジトリを検索する。`query`はGitHub Search API構文（`language:Swift`等）をそのまま渡す。
-    func searchRepositories(query: String, page: Int) async throws -> SearchRepositoriesResult
+    /// `sort`/`order`はGitHub REST APIの同名クエリパラメータ（例: `sort: "stars", order: "desc"`）。
+    /// `nil`を渡すとAPIのデフォルト（最適一致順）になる。
+    func searchRepositories(query: String, page: Int, sort: String?, order: String?) async throws
+        -> SearchRepositoriesResult
 
     /// 指定リポジトリのReleases一覧を取得する（新しい順）。
     func releases(owner: String, repo: String) async throws -> [Release]
@@ -16,6 +19,13 @@ protocol GitHubClientProtocol: Sendable {
 
     /// 現在認証中のユーザー情報を取得する。未認証の場合は`GitHubClientError.unauthenticated`を投げる。
     func authenticatedUser() async throws -> GitHubUser
+}
+
+extension GitHubClientProtocol {
+    /// sort/orderを指定しない従来通りの呼び出し（最適一致順）。既存呼び出し元との互換用。
+    func searchRepositories(query: String, page: Int) async throws -> SearchRepositoriesResult {
+        try await searchRepositories(query: query, page: page, sort: nil, order: nil)
+    }
 }
 
 /// `GET /search/repositories`のレスポンス全体を表す。

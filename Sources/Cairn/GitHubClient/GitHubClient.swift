@@ -33,13 +33,22 @@ final class GitHubClient: GitHubClientProtocol {
         self.decoder = decoder
     }
 
-    func searchRepositories(query: String, page: Int) async throws -> SearchRepositoriesResult {
+    func searchRepositories(query: String, page: Int, sort: String?, order: String?) async throws
+        -> SearchRepositoriesResult
+    {
         var components = URLComponents(
             url: baseURL.appendingPathComponent("search/repositories"), resolvingAgainstBaseURL: false)!
-        components.queryItems = [
+        var queryItems = [
             URLQueryItem(name: "q", value: query),
             URLQueryItem(name: "page", value: String(page)),
         ]
+        if let sort {
+            queryItems.append(URLQueryItem(name: "sort", value: sort))
+        }
+        if let order {
+            queryItems.append(URLQueryItem(name: "order", value: order))
+        }
+        components.queryItems = queryItems
         return try await get(components.url!)
     }
 

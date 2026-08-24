@@ -14,7 +14,11 @@ actor MockGitHubClient: GitHubClientProtocol {
     private(set) var releasesCallCount = 0
     private(set) var readmeCallCount = 0
 
-    func searchRepositories(query: String, page: Int) async throws -> SearchRepositoriesResult {
+    func searchRepositories(query: String, page: Int, sort: String?, order: String?) async throws
+        -> SearchRepositoriesResult
+    {
+        // sort/orderはテストダブルとしては無視する（トレンド機能のテストで必要になれば
+        // 専用ハンドラを追加する）。
         searchCallCount += 1
         recordedQueries.append(query)
         guard let handler = searchRepositoriesHandler else {

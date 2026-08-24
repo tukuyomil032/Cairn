@@ -63,6 +63,42 @@ struct GitHubClientTests {
         #expect(result.items.first?.fullName == "octocat/Repo")
     }
 
+    @Test("searchRepositoriesにsort/orderを渡すとクエリパラメータに反映される")
+    func searchRepositoriesAppliesSortAndOrder() async throws {
+        StubURLProtocol.reset()
+        let body = """
+            {"total_count": 0, "incomplete_results": false, "items": []}
+            """
+        StubURLProtocol.stub(path: "/search/repositories", body: Data(body.utf8))
+
+        let client = Self.makeClient()
+        _ = try await client.searchRepositories(query: "topic:macos", page: 1, sort: "stars", order: "desc")
+
+        let requests = StubURLProtocol.recordedRequests(matching: "/search/repositories")
+        let components = URLComponents(url: requests.last!.url!, resolvingAgainstBaseURL: false)!
+        let queryItems = components.queryItems ?? []
+        #expect(queryItems.contains(URLQueryItem(name: "sort", value: "stars")))
+        #expect(queryItems.contains(URLQueryItem(name: "order", value: "desc")))
+    }
+
+    @Test("sort/orderを省略するとクエリパラメータに含まれない")
+    func searchRepositoriesOmitsSortAndOrderWhenNil() async throws {
+        StubURLProtocol.reset()
+        let body = """
+            {"total_count": 0, "incomplete_results": false, "items": []}
+            """
+        StubURLProtocol.stub(path: "/search/repositories", body: Data(body.utf8))
+
+        let client = Self.makeClient()
+        _ = try await client.searchRepositories(query: "language:Swift", page: 1)
+
+        let requests = StubURLProtocol.recordedRequests(matching: "/search/repositories")
+        let components = URLComponents(url: requests.last!.url!, resolvingAgainstBaseURL: false)!
+        let queryItems = components.queryItems ?? []
+        #expect(!queryItems.contains { $0.name == "sort" })
+        #expect(!queryItems.contains { $0.name == "order" })
+    }
+
     @Test("releasesが配列をデコードして返す")
     func releasesDecodesArray() async throws {
         StubURLProtocol.reset()
