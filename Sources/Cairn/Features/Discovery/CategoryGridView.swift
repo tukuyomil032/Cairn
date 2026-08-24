@@ -14,63 +14,50 @@ struct CategoryGridView: View {
     private let columns = [GridItem(.adaptive(minimum: 228), spacing: 16)]
 
     var body: some View {
-        VStack(spacing: 0) {
+        ScrollView {
             if isLoading {
-                statusBanner(text: "GitHubで最新結果を取得中…", systemImage: "arrow.triangle.2.circlepath")
-            } else if let errorMessage {
-                statusBanner(text: errorMessage, systemImage: "exclamationmark.triangle.fill", isError: true)
-            }
-
-            ScrollView {
-                if repositories.isEmpty {
-                    emptyState
-                        .transition(.opacity)
-                } else {
-                    LazyVGrid(columns: columns, spacing: 16) {
-                        ForEach(repositories) { repository in
-                            AppCardView(repository: repository)
-                        }
-                    }
-                    .padding(20)
+                statusState(systemImage: "arrow.triangle.2.circlepath", text: "GitHubで取得中…", animated: true)
                     .transition(.opacity)
+            } else if let errorMessage {
+                statusState(systemImage: "exclamationmark.triangle.fill", text: errorMessage)
+                    .transition(.opacity)
+            } else if !repositories.isEmpty {
+                LazyVGrid(columns: columns, spacing: 16) {
+                    ForEach(repositories) { repository in
+                        AppCardView(repository: repository)
+                    }
                 }
+                .padding(20)
+                .transition(.opacity)
             }
-            .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: repositories.isEmpty)
+            // repositoriesが空でロード中でもエラーでもない場合は何も表示しない
+            // （空状態メッセージは要件により廃止した）。
         }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: statusKey)
         .background(Color(nsColor: .textBackgroundColor))
     }
 
-    /// 検索の進行中・失敗を握りつぶさず表示する軽度エラーバナー
-    /// （`docs/design/error-handling-ui.md`のパターン①）。
-    private func statusBanner(text: String, systemImage: String, isError: Bool = false) -> some View {
-        HStack(spacing: 8) {
-            if isError {
-                Image(systemName: systemImage)
-                    .foregroundStyle(.orange)
-            } else {
-                ProgressView()
-                    .controlSize(.small)
-            }
-            Text(text)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            Spacer()
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 10)
-        .background(Color(nsColor: .controlBackgroundColor))
+    /// アニメーション対象を切り替えるための識別子（ロード中/エラー/一覧の3状態のみを区別すればよく、
+    /// `repositories`配列自体の内容比較は不要）。
+    private var statusKey: Int {
+        if isLoading { return 0 }
+        if errorMessage != nil { return 1 }
+        return repositories.isEmpty ? 2 : 3
     }
 
-    private var emptyState: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "square.grid.2x2")
+    /// ロード中・エラーを画面中央にSF Symbolsで表示する
+    /// （`docs/design/error-handling-ui.md`のパターン②、握りつぶさない）。
+    private func statusState(systemImage: String, text: String, animated: Bool = false) -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: systemImage)
                 .font(.system(size: 32))
-                .foregroundStyle(.tertiary)
-            Text("表示できるアプリがありません")
+                .foregroundStyle(.secondary)
+                .symbolEffect(.rotate, options: animated ? .repeating : .nonRepeating, isActive: animated)
+            Text(text)
                 .font(.headline)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 80)
+        .padding(.top, 120)
     }
 }
