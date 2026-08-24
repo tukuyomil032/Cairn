@@ -1,12 +1,6 @@
 import SwiftUI
 
 /// Discovery画面のルートView。
-///
-/// `NavigationSplitView`をそのまま使う（`msitarzewski/brew-browser`の実装を参考に、
-/// サイドバーの開閉トグル・背景マテリアル・検索バーの質感は独自実装せずAppleに任せる方針）。
-/// 以前はXcodeナビゲータ風の「ピン解除時ホバー展開」という独自インタラクションを実装していたが、
-/// 独自実装が原因の不具合（検索バー非表示、ガラス感の不整合等）を繰り返した末に撤回した
-/// （`docs/design/sidebar-interaction.md`参照）。
 struct DiscoveryView: View {
     @Environment(AppEnvironment.self) private var appEnvironment
 
@@ -42,7 +36,7 @@ struct DiscoveryView: View {
                             DeviceFlowSignInView(authState: appEnvironment.authenticationState)
                         }
                 }
-                .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 280)
+                .navigationSplitViewColumnWidth(min: 220, ideal: 240, max: 320)
                 .onChange(of: selection) { _, newValue in
                     discoveryViewModel.selectedCategory = newValue.category
                 }
