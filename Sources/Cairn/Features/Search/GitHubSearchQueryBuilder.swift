@@ -6,6 +6,11 @@ enum GitHubSearchQueryBuilder {
     static let languageFilter = #"language:Swift OR language:"Objective-C" OR language:"Objective-C++""#
 
     static func build(from userInput: String) -> String {
-        "\(userInput) \(languageFilter)"
+        // GitHub Search APIはANDがORより優先順位が高いため、括弧なしだと
+        // `userInput AND language:Swift) OR language:"Objective-C" OR language:"Objective-C++"`
+        // と解釈され、2つ目・3つ目のOR節でuserInputが完全に無視されてしまう
+        // （検索語と無関係なObjective-C/Objective-C++全リポジトリがヒットしていた）。
+        // 言語条件全体を括弧で囲むことで意図通りAND(OR OR OR)にする。
+        "\(userInput) (\(languageFilter))"
     }
 }
