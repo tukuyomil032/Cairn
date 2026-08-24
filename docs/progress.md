@@ -126,6 +126,20 @@
 
 **テスト方針**: `Category+DisplayNameTests`、`LinguistColorsTests`、`DiscoveryViewModelTests`（カテゴリフィルタ・件数集計・`lastTopCategory`書き込み）、`ParallaxHoverModifierTests`（座標変換の純粋関数）を実装。View自体（`SidebarView`/`CategoryGridView`/`AppCardView`/`DiscoveryView`）はロジックを持たないため実機確認中心とした。
 
+## Phase 5.5: 検索解像度向上 + プロアクティブなバックグラウンドクロール — 未着手
+
+**判断背景**: Phase5完了後の実機確認中、ユーザーから「Cairnの発見体験の質は、実際にGitHub上で使われているtopicsタグ・キーワードの実態にどれだけ検索条件を合わせられるかに懸かっている」という指摘があった。ユーザー自身のGitHub Starの中にmacOS向けリリースを持つアプリが多数あり、似たジャンルの「競合」アプリ同士でもtopicsタグ・キーワードの付け方が微妙に異なることを実際に把握している。現行の`NoiseFilter.requiredTopicsAny`（`macos`/`macos-app`の2つのみ）や`CategoryKeywords.json`は当て推量で作られており、実態とズレている可能性が高い。
+
+さらに、現行の「ユーザーが検索して初めてSwiftDataキャッシュに載る」というリアクティブなモデル自体への疑義も提起された。「Discovery（発見）」を掲げるアプリが、ユーザーが検索語を知っている前提のUXでは核心的価値と矛盾する。サイドバーの各カテゴリを開いたら、ユーザー自身の検索操作の有無に関わらず最初から様々なアプリが並んでいる、というプロアクティブなモデルの方が優れているという判断で合意した（もちろん手動検索も従来通り併用可能）。
+
+**2段構成の計画（このセッションでは方針決定・文書化のみ。実装はPhase6着手前の別セッションで行う）**:
+
+1. **検索解像度向上のためのデータ収集（Codexへ委譲）**: Cairnの目的・現行の分類設計（`Category` enum、`CategoryKeywords.json`、`NoiseFilter`のtopics/資産要件）をブリーフィングした上で、Codexに「GitHub ReleasesでmacOS向け配布（`.dmg`/`.zip`資産あり）を行っている実在リポジトリを様々なジャンルにわたって約500件調査し、実際に使われているtopicsタグ・キーワードの頻度分布を報告する」というリサーチタスクを委譲する。期待する成果物は`NoiseFilter.requiredTopicsAny`の拡張候補・`CategoryKeywords.json`の拡充候補・現行の固定条件では除外されてしまう実在アプリの具体例。大量リポジトリの機械的調査という性質上、Codexのようなエージェントに向いたタスクと判断した。
+
+2. **プロアクティブなバックグラウンド事前クロール**: 段階1で得た拡充済みキーワード/topics集合を使い、`CacheRefreshScheduler`の役割を「既存キャッシュの鮮度維持」から「新規リポジトリの発見的クロール」まで拡張する。各`Category`について拡充済みキーワードで定期的にGitHub検索を実行し、ヒットしたリポジトリを`NoiseFilter`＋`CategoryClassifier`を通した上でSwiftDataキャッシュへupsertする。**最大の技術的論点はレート制限設計**——GitHub Search APIは認証済みでも30req/minという制約があり（Phase4で確認済み）、全11カテゴリを一度にクロールすることはできない。「起動ごとに1カテゴリだけローテーションでクロールする」「カテゴリごとの最終クロール日時を永続化し一定期間経過したものだけ対象にする」といった段階的スケジューリングの詳細設計は、Phase5.5実装着手時に行う。
+
+Phase5ラウンド7で追加する「トレンド」機能（起動時に1回だけGitHub検索して人気macOSアプリを表示）は、このプロアクティブ事前取得パターンの最小版とみなせる。Phase5.5ではこのパターンをカテゴリ横断・スケジューリング付きで一般化する。
+
 ## Phase 6: AppDetail UI — 未着手
 
 **判断背景**: README表示方式は壁打ちセッションでも結論が出ておらず「未解決事項」として持ち越されていた。実装計画では「まず標準API`AttributedString(markdown:)`で開始し、表現力不足が問題になれば`swift-markdown`等の追加を検討する」という段階的方針を採用している。`swift-markdown`のようなSPM追加を検討する際は、Phase10で確立した「基本はApple標準API、ただし広く使われている定番SPMは可」という依存関係採用基準（`docs/dependencies.md`参照）に沿って判断する。加えて、README/説明文をシステム言語が日本語の場合デフォルトで日本語訳表示する機能（Apple Translation framework、オンデバイス）をPhase6のタスクに含める——詳細は`docs/design/localization.md`参照。
