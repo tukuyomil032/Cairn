@@ -31,8 +31,7 @@ final class SearchViewModel<ClockType: Clock> where ClockType.Duration == Durati
 
     private let gitHubClient: GitHubClientProtocol
     private let modelContext: ModelContext
-    private let noiseFilter: NoiseFiltering
-    private let classifier: CategoryClassifying
+    private let reconciler: RepositorySearchReconciler
     private let clock: ClockType
 
     private var searchTask: Task<Void, Never>?
@@ -49,8 +48,12 @@ final class SearchViewModel<ClockType: Clock> where ClockType.Duration == Durati
         self.gitHubClient = gitHubClient
         self.modelContext = modelContext
         self.clock = clock
-        self.noiseFilter = noiseFilter
-        self.classifier = classifier
+        self.reconciler = RepositorySearchReconciler(
+            gitHubClient: gitHubClient,
+            modelContext: modelContext,
+            noiseFilter: noiseFilter,
+            classifier: classifier
+        )
     }
 
     private func handleQueryTextChanged() {
@@ -116,22 +119,7 @@ final class SearchViewModel<ClockType: Clock> where ClockType.Duration == Durati
             let response = try await gitHubClient.searchRepositories(query: apiQuery, page: 1)
             if Task.isCancelled { return }
 
-            var reconciled: [CachedRepository] = []
-            for repository in response.items {
-                if Task.isCancelled { return }
-                // ノイズ除去（dmg/zip資産チェック含む）は一覧段階で適用する。詳細画面遷移時のみ
-                // 適用するより無駄なAPI呼び出しが増えるトレードオフを承知の上でのユーザー選択。
-                // ダウンロードはせず、Releases一覧APIのassets[].nameを見るだけに留める。
-                let releases =
-                    (try? await gitHubClient.releases(owner: repository.owner.login, repo: repository.name)) ?? []
-                guard noiseFilter.shouldInclude(repository: repository, releases: releases) else { continue }
-
-                // README未取得のため、この段階ではtopics/名前のみでの分類になる
-                // （README込みの再分類は詳細画面遷移時にCacheRefreshSchedulerが行う）。
-                let classification = classifier.classify(repository: repository, readme: nil)
-                reconciled.append(upsert(repository: repository, releases: releases, classification: classification))
-            }
-            try? modelContext.save()
+            let reconciled = await reconciler.reconcile(response.items)
 
             errorMessage = nil
             if !Task.isCancelled {
@@ -142,52 +130,6 @@ final class SearchViewModel<ClockType: Clock> where ClockType.Duration == Durati
                 errorMessage = "検索に失敗しました"
             }
         }
-    }
-
-    private func upsert(
-        repository: Repository,
-        releases: [Release],
-        classification: ClassificationResult
-    ) -> CachedRepository {
-        let repositoryID = repository.id
-        let descriptor = FetchDescriptor<CachedRepository>(
-            predicate: #Predicate { $0.githubId == repositoryID }
-        )
-        let cachedReleases = releases.map {
-            CachedRelease(
-                tagName: $0.tagName,
-                assetNames: $0.assets.map(\.name),
-                assetURLs: $0.assets.map { $0.browserDownloadURL.absoluteString }
-            )
-        }
-
-        if let existing = try? modelContext.fetch(descriptor).first {
-            existing.fullName = repository.fullName
-            existing.topics = repository.topics
-            existing.starCount = repository.stargazersCount
-            existing.primaryLanguage = repository.language ?? ""
-            existing.htmlURL = repository.htmlURL.absoluteString
-            existing.category = classification.category.rawValue
-            existing.subTags = classification.subTags
-            existing.lastFetchedAt = Date()
-            existing.releases = cachedReleases
-            return existing
-        }
-
-        let new = CachedRepository(
-            githubId: repository.id,
-            fullName: repository.fullName,
-            topics: repository.topics,
-            starCount: repository.stargazersCount,
-            primaryLanguage: repository.language ?? "",
-            htmlURL: repository.htmlURL.absoluteString,
-            category: classification.category.rawValue,
-            subTags: classification.subTags,
-            lastFetchedAt: Date(),
-            releases: cachedReleases
-        )
-        modelContext.insert(new)
-        return new
     }
 }
 
