@@ -7,7 +7,7 @@ import SwiftUI
 struct CategoryGridView: View {
     var repositories: [CachedRepository]
     var isLoading: Bool = false
-    var errorMessage: String? = nil
+    var errorMessage: String?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 

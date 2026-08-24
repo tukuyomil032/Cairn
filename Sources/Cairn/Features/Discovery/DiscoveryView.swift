@@ -17,26 +17,31 @@ struct DiscoveryView: View {
                 NavigationSplitView(columnVisibility: $columnVisibility) {
                     SidebarView(viewModel: discoveryViewModel, selection: $selection)
                 } detail: {
-                    CategoryGridView(repositories: discoveryViewModel.repositoriesByCategory)
-                        .navigationTitle(title(for: selection))
-                        .toolbar {
-                            ToolbarItemGroup(placement: .primaryAction) {
-                                if appEnvironment.authenticationState.status == .unauthenticated {
-                                    Button {
-                                        isPresentingSignIn = true
-                                    } label: {
-                                        Label("サインイン", systemImage: "key.fill")
-                                    }
-                                    .help("サインインするとAPI呼び出しの上限が緩和されます")
+                    let isSearching = !searchViewModel.queryText.isEmpty
+                    CategoryGridView(
+                        repositories: isSearching ? searchViewModel.results : discoveryViewModel.repositoriesByCategory,
+                        isLoading: isSearching && searchViewModel.isLoading,
+                        errorMessage: isSearching ? searchViewModel.errorMessage : nil
+                    )
+                    .navigationTitle(isSearching ? "「\(searchViewModel.queryText)」の検索結果" : title(for: selection))
+                    .toolbar {
+                        ToolbarItemGroup(placement: .primaryAction) {
+                            if appEnvironment.authenticationState.status == .unauthenticated {
+                                Button {
+                                    isPresentingSignIn = true
+                                } label: {
+                                    Label("サインイン", systemImage: "key.fill")
                                 }
+                                .help("サインインするとAPI呼び出しの上限が緩和されます")
                             }
                         }
-                        .searchable(text: $searchViewModel.queryText, placement: .toolbar, prompt: "アプリを検索")
-                        .sheet(isPresented: $isPresentingSignIn) {
-                            DeviceFlowSignInView(authState: appEnvironment.authenticationState)
-                        }
+                    }
+                    .searchable(text: $searchViewModel.queryText, placement: .toolbar, prompt: "アプリを検索")
+                    .sheet(isPresented: $isPresentingSignIn) {
+                        DeviceFlowSignInView(authState: appEnvironment.authenticationState)
+                    }
                 }
-                .navigationSplitViewColumnWidth(min: 220, ideal: 240, max: 320)
+                .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 280)
                 .onChange(of: selection) { _, newValue in
                     discoveryViewModel.selectedCategory = newValue.category
                 }
